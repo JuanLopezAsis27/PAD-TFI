@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ArcaSim.Api/ArcaSim.Api.csproj" />
+    <Project Path="src/ArcaSim.Aplicacion/ArcaSim.Aplicacion.csproj" />
+    <Project Path="src/ArcaSim.Contratos/ArcaSim.Contratos.csproj" />
+    <Project Path="src/ArcaSim.Dominio/ArcaSim.Dominio.csproj" />
+    <Project Path="src/ArcaSim.Infraestructura/ArcaSim.Infraestructura.csproj" />
+    <Project Path="src/ArcaSim.Web/ArcaSim.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ArcaSim.Tests/ArcaSim.Tests.csproj" />
+  </Folder>
+</Solution>

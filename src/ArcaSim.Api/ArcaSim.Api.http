@@ -1,0 +1,18 @@
+@ArcaSim.Api_HostAddress = http://localhost:5030
+
+### REST: estado del servicio
+GET {{ArcaSim.Api_HostAddress}}/api/estado
+Accept: application/json
+
+### SOAP: FEDummy (igual que en ARCA)
+POST {{ArcaSim.Api_HostAddress}}/wsfev1/service.asmx
+Content-Type: text/xml; charset=utf-8
+SOAPAction: "http://ar.gov.afip.dif.FEV1/FEDummy"
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ar="http://ar.gov.afip.dif.FEV1/">
+  <soapenv:Body>
+    <ar:FEDummy/>
+  </soapenv:Body>
+</soapenv:Envelope>
+
+###

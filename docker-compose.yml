@@ -1,0 +1,17 @@
+# Base de datos para desarrollo local.
+# Uso: docker compose up -d
+services:
+  postgres:
+    image: postgres:17
+    container_name: arcasim-postgres
+    environment:
+      POSTGRES_DB: arcasim
+      POSTGRES_USER: arcasim
+      POSTGRES_PASSWORD: arcasim
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
