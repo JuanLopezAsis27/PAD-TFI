@@ -12,7 +12,7 @@ implementada
 
 | Integrante | Legajo | Email | Usuario de GitHub | Rol (ver [§8](#8-división-del-trabajo)) |
 |---|---|---|---|---|
-| _Nombre y apellido_ | | | | |
+| Rodrigo Martín Ordoñez Nadra | 58366 | Rodrigo.OrdonezNadra@alu.frt.utn.edu.ar | RodriGB0510 | Rol 1 |
 | _Nombre y apellido_ | | | | |
 | _Nombre y apellido_ | | | | |
 | _Nombre y apellido_ | | | | |
