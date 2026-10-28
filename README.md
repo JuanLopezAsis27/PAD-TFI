@@ -13,7 +13,7 @@ implementada
 | Integrante | Legajo | Email | Usuario de GitHub | Rol (ver [§8](#8-división-del-trabajo)) |
 |---|---|---|---|---|
 | Rodrigo Martín Ordoñez Nadra | 58366 | Rodrigo.OrdonezNadra@alu.frt.utn.edu.ar | RodriGB0510 | Rol 1 |
-| _Nombre y apellido_ | | | | |
+| López Asis Juan Manuel | 53303 | juan.lopezasis27@hotmail.com | JuanLopezAsis27 | Rol 3 |
 | _Nombre y apellido_ | | | | |
 | _Nombre y apellido_ | | | | |
 
