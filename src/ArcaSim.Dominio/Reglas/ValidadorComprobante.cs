@@ -12,14 +12,16 @@ public class ValidadorComprobante
     private const decimal toleranciaRelativa = 0.0001m;
 
     public static bool EsValido(Comprobante? comprobante, Contribuyente? contribuyenteEmisor,
-        CondicionIva condicionEmisor, DateTime fechaGeneracion, long ultimoNumeroAutorizado)
+        CondicionIva condicionEmisor, DateTime fechaGeneracion, long ultimoNumeroAutorizado,
+        DateTime? fechaUltimoAutorizado = null)
     {
         return Validar(comprobante, contribuyenteEmisor, condicionEmisor, fechaGeneracion,
-            ultimoNumeroAutorizado).EsValido;
+            ultimoNumeroAutorizado, fechaUltimoAutorizado).EsValido;
     }
 
     public static ResultadoValidacion Validar(Comprobante? comprobante, Contribuyente? contribuyenteEmisor,
-        CondicionIva condicionEmisor, DateTime fechaGeneracion, long ultimoNumeroAutorizado)
+        CondicionIva condicionEmisor, DateTime fechaGeneracion, long ultimoNumeroAutorizado,
+        DateTime? fechaUltimoAutorizado = null)
     {
         var errores = new List<ErrorValidacion>();
 
@@ -82,14 +84,16 @@ public class ValidadorComprobante
             errores.Add(new ErrorValidacion("10016", "El número del comprobante no es correlativo."));
         }
 
+        if (fechaUltimoAutorizado.HasValue && comprobante.Fecha.Date < fechaUltimoAutorizado.Value.Date)
+        {
+            errores.Add(new ErrorValidacion("10016",
+                "La fecha del comprobante no puede ser anterior a la del último comprobante autorizado."));
+        }
+
         if (EsComprobanteTipoC(comprobante.Tipo))
         {
-            if (comprobante.ImporteIVA != 0)
-            {
-                errores.Add(new ErrorValidacion("10047",
-                    "Los comprobantes tipo C deben informar importe de IVA igual a cero."));
-            }
-
+            // Los importes que deben ser cero en tipo C (10043, 10044, 10047) se controlan en
+            // ValidadorImportesComprobante.
             if (alicuotas is { Count: > 0 })
             {
                 errores.Add(new ErrorValidacion("10071",

@@ -734,6 +734,71 @@ public class ComprobanteServicioTests
             resultado.Mensaje);
     }
 
+    [Fact]
+    public void Registrar_MismoNumeroTrasRechazo_ReemplazaAlRechazado()
+    {
+        var rechazado = CrearComprobante();
+        _servicio.Registrar(rechazado, FechaPrueba);
+        _servicio.AplicarResultadoAutorizacion(rechazado.CUITEmisor, rechazado.PuntoVentaNumero,
+            rechazado.Tipo, rechazado.Numero, new ResultadoAutorizacion { Autorizado = false });
+
+        var reintento = CrearComprobante();
+        var resultado = _servicio.Registrar(reintento, FechaPrueba);
+
+        Assert.True(resultado.EsValido);
+        Assert.DoesNotContain(rechazado, _comprobanteRepositorio.Comprobantes);
+        Assert.DoesNotContain(rechazado, _puntoVenta.Comprobantes);
+        Assert.Contains(reintento, _comprobanteRepositorio.Comprobantes);
+    }
+
+    [Fact]
+    public void Registrar_ReintentoInvalidoTrasRechazo_ConservaAlRechazado()
+    {
+        var rechazado = CrearComprobante();
+        _servicio.Registrar(rechazado, FechaPrueba);
+        _servicio.AplicarResultadoAutorizacion(rechazado.CUITEmisor, rechazado.PuntoVentaNumero,
+            rechazado.Tipo, rechazado.Numero, new ResultadoAutorizacion { Autorizado = false });
+
+        var reintento = CrearComprobante();
+        reintento.ImporteTotal = 1;
+        var resultado = _servicio.Registrar(reintento, FechaPrueba);
+
+        Assert.False(resultado.EsValido);
+        Assert.Contains(rechazado, _comprobanteRepositorio.Comprobantes);
+    }
+
+    [Fact]
+    public void Registrar_FechaAnteriorAlUltimoAutorizado_DevuelveCodigo10016()
+    {
+        var primero = CrearComprobante();
+        _servicio.Registrar(primero, FechaPrueba);
+        _servicio.AutorizarSimuladamente(primero.CUITEmisor, primero.PuntoVentaNumero, primero.Tipo,
+            primero.Numero);
+
+        var segundo = CrearComprobante();
+        segundo.Numero = 2;
+        segundo.Fecha = FechaPrueba.AddDays(-1);
+        var resultado = _servicio.Registrar(segundo, FechaPrueba);
+
+        Assert.False(resultado.EsValido);
+        Assert.Contains(resultado.Errores, e => e.codigo == "10016");
+    }
+
+    [Fact]
+    public void Registrar_MismaFechaQueElUltimoAutorizado_RegistraCorrectamente()
+    {
+        var primero = CrearComprobante();
+        _servicio.Registrar(primero, FechaPrueba);
+        _servicio.AutorizarSimuladamente(primero.CUITEmisor, primero.PuntoVentaNumero, primero.Tipo,
+            primero.Numero);
+
+        var segundo = CrearComprobante();
+        segundo.Numero = 2;
+        var resultado = _servicio.Registrar(segundo, FechaPrueba);
+
+        Assert.True(resultado.EsValido);
+    }
+
     private static string CrearUrlQr(string cae = "12345678901234")
     {
         var datos = new
@@ -831,7 +896,7 @@ internal class RepositorioComprobanteFalso : IComprobanteRepositorio
             c.PuntoVentaNumero == puntoVentaNumero && c.Tipo == tipo && c.Numero == numero);
     }
 
-    public long ObtenerUltimoNumeroAutorizado(string cuitEmisor, int puntoVentaNumero,
+    public Comprobante? ObtenerUltimoAutorizado(string cuitEmisor, int puntoVentaNumero,
         TipoComprobante tipo)
     {
         return Comprobantes
@@ -840,14 +905,17 @@ internal class RepositorioComprobanteFalso : IComprobanteRepositorio
                 c.EstadoAutorizacion is
                 EstadoAutorizacionComprobante.Autorizado or
                 EstadoAutorizacionComprobante.AutorizadoConObservaciones)
-            .Select(c => c.Numero)
-            .DefaultIfEmpty(0)
-            .Max();
+            .MaxBy(c => c.Numero);
     }
 
     public void Agregar(Comprobante comprobante)
     {
         Comprobantes.Add(comprobante);
+    }
+
+    public void Eliminar(Comprobante comprobante)
+    {
+        Comprobantes.Remove(comprobante);
     }
 
     public void Actualizar(Comprobante comprobante)
