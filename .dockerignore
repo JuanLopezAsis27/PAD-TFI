@@ -1,0 +1,10 @@
+# Lo que no hace falta mandar a "docker build" (las imágenes compilan desde el código fuente).
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+.git/
+.vscode/
+.idea/
+tests/
+docs/

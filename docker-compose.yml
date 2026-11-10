@@ -1,5 +1,13 @@
-# Base de datos para desarrollo local.
-# Uso: docker compose up -d
+# Entorno de desarrollo local. Dos formas de usarlo:
+#
+#   Solo la base de datos (la API y el portal se corren con dotnet run):
+#     docker compose up -d
+#
+#   Todo en contenedores (base + API en :5030 + portal en :5247):
+#     docker compose --profile app up -d --build
+#
+# Las credenciales son solo para desarrollo. En producción la connection string se pasa con la
+# variable de entorno ConnectionStrings__ArcaSimDb.
 services:
   postgres:
     image: postgres:17
@@ -12,6 +20,50 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arcasim -d arcasim"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: src/ArcaSim.Api/Dockerfile
+    container_name: arcasim-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Hora de Argentina: las fechas de los comprobantes se validan contra "hoy".
+      TZ: America/Argentina/Buenos_Aires
+      ConnectionStrings__ArcaSimDb: "Host=postgres;Port=5432;Database=arcasim;Username=arcasim;Password=arcasim"
+      BaseDeDatos__AplicarMigraciones: "true"
+      BaseDeDatos__CargarDatosDePrueba: "true"
+      # RENAPER simulado por defecto. Para usar el real, crear un archivo .env (git lo ignora) con
+      # RENAPER_MODO=Http y RENAPER_API_KEY=la_clave_generada_en_su_portal.
+      Renaper__Modo: ${RENAPER_MODO:-Stub}
+      Renaper__ApiKey: ${RENAPER_API_KEY:-}
+    ports:
+      - "5030:8080"
+
+  web:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: src/ArcaSim.Web/Dockerfile
+    container_name: arcasim-web
+    depends_on:
+      - api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      TZ: America/Argentina/Buenos_Aires
+      # El portal llama a la API desde el servidor, por la red interna de Docker.
+      Api__UrlBase: "http://api:8080"
+    ports:
+      - "5247:8080"
 
 volumes:
   postgres-data:

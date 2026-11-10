@@ -34,8 +34,8 @@ factura electrónica:
   CAE de sus facturas. Cualquiera puede además verificar una factura con nuestro servicio de
   constatación.
 - **Consumimos:** otro grupo hace una simulación de **RENAPER** (Registro Nacional de las
-  Personas). La usamos para validar la identidad de las personas que se registran como
-  contribuyentes y de los receptores de facturas identificados con DNI.
+  Personas). La usamos para validar la identidad de las personas humanas que se registran como
+  contribuyentes (ver [docs/renaper.md](docs/renaper.md)).
 
 ---
 
@@ -87,8 +87,8 @@ receptor por DNI, primero se valida que la persona exista en el registro de iden
 
 **Mínimo (MVP):**
 
-1. **Contribuyentes y puntos de venta:** alta de emisores. Las personas humanas se validan contra
-   **RENAPER** (DNI → nombre y apellido) y se les calcula o valida la CUIT.
+1. **Contribuyentes y puntos de venta:** alta de emisores. A las personas humanas se les valida la
+   CUIT y, con **RENAPER**, que el nombre y el apellido correspondan al DNI de esa CUIT.
 2. **Web service SOAP WSFEv1 igual al de ARCA** (mismo WSDL, namespace, operaciones y nombres de
    campos): `FEDummy` (ya implementado), `FECompUltimoAutorizado`, `FECAESolicitar`,
    `FECompConsultar` y algunos `FEParamGet*` (tablas de tipos de comprobante, IVA, etc.).
@@ -182,17 +182,17 @@ vacío valida la API key; con `Sign`, valida el Ticket de Acceso del WSAA.
 Errores de autenticación (mismos códigos que ARCA): **600** si la API key no es válida o fue
 revocada, y **601** si la CUIT del `Auth` no corresponde a esa API key.
 
-### Integración con RENAPER (a acordar con el otro grupo)
+### Integración con RENAPER
 
-Lo que necesitamos de su servicio, como mínimo:
+Usamos el servicio **Renaper Validation** de otro grupo. No devuelve los datos de la persona: solo
+confirma si coinciden.
 
-| Operación | Entrada | Salida esperada |
+| Operación | Entrada | Salida |
 |---|---|---|
-| Consultar persona | DNI (y sexo, si lo requieren) | Existe sí/no, nombre, apellido, fecha de nacimiento, si falleció |
+| `POST /api/v1/personas/validar` (API key en el header `X-API-Key`) | DNI, nombre, apellido, edad mínima | `datosCoinciden` y `cumpleEdadMinima` (sí/no) |
 
-La URL se configura en `src/ArcaSim.Api/appsettings.Development.json` → `Renaper:UrlBase`.
-El formato exacto (rutas, JSON, autenticación) hay que acordarlo con ese grupo y documentarlo en
-`docs/`.
+En desarrollo se usa un RENAPER simulado, sin red ni créditos. El contrato, la configuración, los
+errores y las personas de prueba están en [docs/renaper.md](docs/renaper.md).
 
 ---
 
@@ -220,7 +220,7 @@ El formato exacto (rutas, JSON, autenticación) hay que acordarlo con ese grupo 
 ```
 TFI-base/
 ├── ArcaSim.slnx                     Solución (Visual Studio 2026 / dotnet CLI)
-├── docker-compose.yml               PostgreSQL para desarrollo
+├── docker-compose.yml               PostgreSQL para desarrollo (y, con --profile app, API y portal)
 ├── docs/                            Diagramas, contrato con RENAPER, decisiones
 ├── src/
 │   ├── ArcaSim.Dominio/             Núcleo del negocio (sin dependencias)
@@ -322,16 +322,37 @@ dotnet run --project src/ArcaSim.Web
 dotnet test
 ```
 
+También se puede levantar todo en contenedores (base, API y portal, en los mismos puertos), sin
+tener el SDK de .NET instalado:
+
+```bash
+docker compose --profile app up -d --build   # levantar (--build recompila si cambió el código)
+docker compose --profile app down            # bajar (los datos quedan en el volumen)
+```
+
 Para probar el SOAP: el archivo `src/ArcaSim.Api/ArcaSim.Api.http` trae un pedido `FEDummy` listo
 para ejecutar desde Visual Studio o VS Code (extensión REST Client). También sirven SoapUI y
 Postman.
 
-Cuando se agreguen entidades al `AppDbContext`, crear y aplicar las migraciones:
+### Base de datos y datos de prueba
+
+En desarrollo (y en Docker) la API, al iniciar, aplica las migraciones pendientes y carga datos de
+prueba. Se controla con la sección `BaseDeDatos` de `appsettings.Development.json`; en producción
+las dos opciones vienen apagadas. Los datos se cargan una sola vez:
+
+| CUIT | Contribuyente | Condición | Puntos de venta | Comprobantes autorizados |
+|---|---|---|---|---|
+| `30712345671` | Comercio Demo S.A. (jurídica) | Responsable Inscripto | 1 y 2 (el 3 está deshabilitado) | Factura A N° 1 y Factura B N° 1, en el punto de venta 1 |
+| `27287654311` | María Ejemplo (humana) | Monotributista | 1 | Factura C N° 1 (servicios) |
+| `30709998885` | Fundación Demo (jurídica) | Exento | 1 | — |
+
+Para empezar de cero: `docker compose down -v` (borra el volumen con los datos).
+
+Después de cambiar el modelo (entidades o `Persistencia/Configuraciones`), crear una migración nueva:
 
 ```bash
-dotnet tool install --global dotnet-ef
-dotnet ef migrations add Inicial --project src/ArcaSim.Infraestructura --startup-project src/ArcaSim.Api --output-dir Persistencia/Migraciones
-dotnet ef database update --project src/ArcaSim.Infraestructura --startup-project src/ArcaSim.Api
+dotnet tool install --global dotnet-ef   # una sola vez
+dotnet ef migrations add NombreDelCambio --project src/ArcaSim.Infraestructura --startup-project src/ArcaSim.Api --output-dir Persistencia/Migraciones
 ```
 
 ---
@@ -396,7 +417,8 @@ Lo que ve una persona: el reemplazo del sitio de ARCA con Clave Fiscal.
 
 - Controllers REST para el portal: contribuyentes, puntos de venta, API key, listado y
   emisión manual de comprobantes, constatación. DTOs en `ArcaSim.Contratos`.
-- Páginas Blazor: alta de contribuyente (con los datos que devuelve RENAPER), puntos de venta,
+- Páginas Blazor: alta de contribuyente (para personas humanas: CUIT, nombre y apellido, que se
+  validan con RENAPER), puntos de venta,
   generación de la **API key** (mostrarla una sola vez, con opción de regenerarla), emitir
   comprobante, mis comprobantes, detalle del comprobante con **QR**, y página pública de
   **constatación** (a donde apunta el QR).

@@ -1,5 +1,7 @@
 using ArcaSim.Api.Soap.Wsfev1;
 using ArcaSim.Infraestructura;
+using ArcaSim.Infraestructura.Integraciones.Renaper;
+using ArcaSim.Infraestructura.Persistencia;
 using Scalar.AspNetCore;
 using SoapCore;
 
@@ -16,9 +18,15 @@ builder.Services.AddScoped<IServiceSoap, ServiceSoap>();
 
 builder.Services.AddInfraestructura(
     builder.Configuration.GetConnectionString("ArcaSimDb")
-    ?? throw new InvalidOperationException("Falta la connection string 'ArcaSimDb'."));
+    ?? throw new InvalidOperationException("Falta la connection string 'ArcaSimDb'."),
+    builder.Configuration.GetSection(RenaperOpciones.Seccion).Get<RenaperOpciones>() ?? new RenaperOpciones());
 
 var app = builder.Build();
+
+// Migraciones y datos de prueba al iniciar, según el ambiente (sección BaseDeDatos de appsettings).
+app.Services.InicializarBaseDeDatos(
+    aplicarMigraciones: app.Configuration.GetValue<bool>("BaseDeDatos:AplicarMigraciones"),
+    cargarDatosDePrueba: app.Configuration.GetValue<bool>("BaseDeDatos:CargarDatosDePrueba"));
 
 if (app.Environment.IsDevelopment())
 {
