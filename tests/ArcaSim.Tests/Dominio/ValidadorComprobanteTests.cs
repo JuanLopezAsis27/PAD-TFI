@@ -434,6 +434,65 @@ public class ValidadorComprobanteTests
     }
 
     [Fact]
+    public void Validar_FacturaCConExento_DevuelveCodigo10044()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaC;
+        comprobante.CondicionIvaReceptor = CondicionIva.ConsumidorFinal;
+        comprobante.AlicuotasIva.Clear();
+        comprobante.ImporteIVA = 0m;
+        comprobante.ImporteExento = 50m;
+        comprobante.ImporteTotal = 100m;
+        var resultado = ValidadorComprobante.Validar(comprobante, CrearContribuyenteValido(),
+            CondicionIva.Monotributista, comprobante.Fecha, comprobante.Numero - 1);
+        Assert.Contains(resultado.Errores, e => e.codigo == "10044");
+    }
+
+    [Fact]
+    public void Validar_FacturaBAConsumidorFinalSinIdentificar_DevuelveValido()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaB;
+        comprobante.TipoDocumentoReceptor = TipoDocumento.SinIdentificar;
+        comprobante.NumeroDocumentoReceptor = "0";
+        comprobante.CondicionIvaReceptor = CondicionIva.ConsumidorFinal;
+        var resultado = ValidadorComprobante.Validar(comprobante, CrearContribuyenteValido(),
+            CondicionIva.ResponsableInscripto, comprobante.Fecha, comprobante.Numero - 1);
+        Assert.True(resultado.EsValido);
+    }
+
+    [Fact]
+    public void Validar_FacturaASinIdentificarReceptor_DevuelveCodigo10013()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.TipoDocumentoReceptor = TipoDocumento.SinIdentificar;
+        comprobante.NumeroDocumentoReceptor = "0";
+        var resultado = ValidadorComprobante.Validar(comprobante, CrearContribuyenteValido(),
+            CondicionIva.ResponsableInscripto, comprobante.Fecha, comprobante.Numero - 1);
+        Assert.Contains(resultado.Errores, e => e.codigo == "10013");
+    }
+
+    [Fact]
+    public void Validar_FechaAnteriorAlUltimoAutorizado_DevuelveCodigo10016()
+    {
+        var comprobante = CrearComprobanteValido();
+        var resultado = ValidadorComprobante.Validar(comprobante, CrearContribuyenteValido(),
+            CondicionIva.ResponsableInscripto, comprobante.Fecha, comprobante.Numero - 1,
+            comprobante.Fecha.AddDays(1));
+        Assert.Contains(resultado.Errores, e => e.codigo == "10016");
+    }
+
+    [Fact]
+    public void Validar_FechaIgualAlUltimoAutorizado_DevuelveValido()
+    {
+        var comprobante = CrearComprobanteValido();
+        var resultado = ValidadorComprobante.Validar(comprobante, CrearContribuyenteValido(),
+            CondicionIva.ResponsableInscripto, comprobante.Fecha, comprobante.Numero - 1,
+            comprobante.Fecha);
+        Assert.True(resultado.EsValido);
+    }
+
+    [Fact]
     public void Validar_FechaInicioPosteriorAFinServicio_DevuelveDOM004()
     {
         var comprobante = CrearComprobanteValido();

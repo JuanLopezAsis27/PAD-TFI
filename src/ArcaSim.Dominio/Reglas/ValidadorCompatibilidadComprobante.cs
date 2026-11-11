@@ -10,38 +10,11 @@ public class ValidadorCompatibilidadComprobante
     public static bool EsValido(TipoComprobante tipo, CondicionIva condicionEmisor,
         CondicionIva condicionReceptor)
     {
-        return tipo switch
-        {
-            TipoComprobante.FacturaA or
-            TipoComprobante.NotaDebitoA or
-            TipoComprobante.NotaCreditoA
-            => condicionEmisor == CondicionIva.ResponsableInscripto
-            && (
-                condicionReceptor == CondicionIva.ResponsableInscripto
-                || condicionReceptor == CondicionIva.Monotributista
-            ),
-
-            TipoComprobante.FacturaB or
-            TipoComprobante.NotaDebitoB or
-            TipoComprobante.NotaCreditoB
-            => condicionEmisor == CondicionIva.ResponsableInscripto
-            && (
-                condicionReceptor == CondicionIva.ConsumidorFinal
-                || condicionReceptor == CondicionIva.Exento
-                || condicionReceptor == CondicionIva.NoResponsable
-                || condicionReceptor == CondicionIva.SujetoNoCategorizado
-            ),
-
-            TipoComprobante.FacturaC or
-            TipoComprobante.NotaDebitoC or
-            TipoComprobante.NotaCreditoC
-            => condicionEmisor == CondicionIva.Monotributista
-            || condicionEmisor == CondicionIva.Exento,
-
-            _ => false
-        };
+        return EsCompatibleEmisor(tipo, condicionEmisor) && EsCompatibleReceptor(tipo, condicionReceptor);
     }
 
+    // Condiciones del receptor admitidas por clase de comprobante, según
+    // FEParamGetCondicionIvaReceptor (RG 5616).
     public static bool EsCompatibleReceptor(TipoComprobante tipo, CondicionIva condicionReceptor)
     {
         return tipo switch
@@ -49,26 +22,17 @@ public class ValidadorCompatibilidadComprobante
             TipoComprobante.FacturaA or
             TipoComprobante.NotaDebitoA or
             TipoComprobante.NotaCreditoA
-                => condicionReceptor == CondicionIva.ResponsableInscripto
-                || condicionReceptor == CondicionIva.Monotributista,
+                => EsReceptorClaseA(condicionReceptor),
 
             TipoComprobante.FacturaB or
             TipoComprobante.NotaDebitoB or
             TipoComprobante.NotaCreditoB
-                => condicionReceptor == CondicionIva.ConsumidorFinal
-                || condicionReceptor == CondicionIva.Exento
-                || condicionReceptor == CondicionIva.NoResponsable
-                || condicionReceptor == CondicionIva.SujetoNoCategorizado,
+                => EsReceptorClaseB(condicionReceptor),
 
             TipoComprobante.FacturaC or
             TipoComprobante.NotaDebitoC or
             TipoComprobante.NotaCreditoC
-                => condicionReceptor is CondicionIva.ResponsableInscripto
-                or CondicionIva.Monotributista
-                or CondicionIva.Exento
-                or CondicionIva.NoResponsable
-                or CondicionIva.ConsumidorFinal
-                or CondicionIva.SujetoNoCategorizado,
+                => EsReceptorClaseA(condicionReceptor) || EsReceptorClaseB(condicionReceptor),
 
             _ => false
         };
@@ -89,10 +53,32 @@ public class ValidadorCompatibilidadComprobante
             TipoComprobante.FacturaC or
             TipoComprobante.NotaDebitoC or
             TipoComprobante.NotaCreditoC
-                => condicionEmisor == CondicionIva.Monotributista
-                    || condicionEmisor == CondicionIva.Exento,
+                => EsMonotributo(condicionEmisor) || condicionEmisor == CondicionIva.Exento,
 
             _ => false
         };
+    }
+
+    private static bool EsReceptorClaseA(CondicionIva condicion)
+    {
+        return condicion == CondicionIva.ResponsableInscripto || EsMonotributo(condicion);
+    }
+
+    private static bool EsReceptorClaseB(CondicionIva condicion)
+    {
+        return condicion is CondicionIva.Exento
+            or CondicionIva.ConsumidorFinal
+            or CondicionIva.SujetoNoCategorizado
+            or CondicionIva.ProveedorDelExterior
+            or CondicionIva.ClienteDelExterior
+            or CondicionIva.IvaLiberadoLey19640
+            or CondicionIva.IvaNoAlcanzado;
+    }
+
+    private static bool EsMonotributo(CondicionIva condicion)
+    {
+        return condicion is CondicionIva.Monotributista
+            or CondicionIva.MonotributistaSocial
+            or CondicionIva.MonotributoTrabajadorIndependientePromovido;
     }
 }

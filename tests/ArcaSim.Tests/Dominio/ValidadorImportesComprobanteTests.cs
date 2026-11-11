@@ -61,4 +61,59 @@ public class ValidadorImportesComprobanteTests
         var errores = ValidadorImportesComprobante.Validar(comprobante);
         Assert.Contains(errores, error => error.codigo == codigoEsperado);
     }
+
+    [Theory]
+    [InlineData("noGravado", "10043")]
+    [InlineData("exento", "10044")]
+    [InlineData("iva", "10047")]
+    public void Validar_ComprobanteCConImporteDistintoDeCero_DevuelveErrorCorrespondiente(string campo,
+        string codigoEsperado)
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaC;
+        comprobante.ImporteIVA = 0m;
+
+        switch (campo)
+        {
+            case "noGravado":
+                comprobante.ImporteNoGravado = 500m;
+                break;
+            case "exento":
+                comprobante.ImporteExento = 500m;
+                break;
+            case "iva":
+                comprobante.ImporteIVA = 500m;
+                break;
+        }
+
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+        var error = Assert.Single(errores);
+        Assert.Equal(codigoEsperado, error.codigo);
+    }
+
+    [Fact]
+    public void Validar_ComprobanteCConImporteNegativo_DevuelveUnSoloError()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaC;
+        comprobante.ImporteIVA = -1m;
+
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+
+        var error = Assert.Single(errores);
+        Assert.Equal("10047", error.codigo);
+    }
+
+    [Fact]
+    public void Validar_ComprobanteBConExentoYNoGravado_NoDevuelveErrores()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaB;
+        comprobante.ImporteExento = 500m;
+        comprobante.ImporteNoGravado = 300m;
+
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+
+        Assert.Empty(errores);
+    }
 }

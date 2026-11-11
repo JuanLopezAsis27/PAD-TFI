@@ -64,6 +64,7 @@ public class ValidadorDatosComprobante
         {
             TipoDocumento.CUIT or TipoDocumento.CUIL => ValidadorCUIT.EsValido(numeroDocumento),
             TipoDocumento.DNI => numeroDocumento.Length is 7 or 8,
+            TipoDocumento.SinIdentificar => numeroDocumento == "0",
             _ => false
         };
     }

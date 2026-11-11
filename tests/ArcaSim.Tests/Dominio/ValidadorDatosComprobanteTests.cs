@@ -36,6 +36,28 @@ public class ValidadorDatosComprobanteTests
     }
 
     [Fact]
+    public void EsValido_ReceptorSinIdentificarConNumeroCero_DevuelveTrue()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaB;
+        comprobante.TipoDocumentoReceptor = TipoDocumento.SinIdentificar;
+        comprobante.NumeroDocumentoReceptor = "0";
+        Assert.True(ValidadorDatosComprobante.EsValido(comprobante));
+    }
+
+    [Theory]
+    [InlineData("30123456")]
+    [InlineData("00")]
+    public void EsValido_ReceptorSinIdentificarConNumeroDistintoDeCero_DevuelveFalse(string numero)
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaB;
+        comprobante.TipoDocumentoReceptor = TipoDocumento.SinIdentificar;
+        comprobante.NumeroDocumentoReceptor = numero;
+        Assert.False(ValidadorDatosComprobante.EsValido(comprobante));
+    }
+
+    [Fact]
     public void EsValido_CUITEmisorIncorrecto_DevuelveFalse()
     {
         var comprobante = CrearComprobanteValido();

@@ -15,6 +15,13 @@ public class ValidadorCompatibilidadComprobanteTests
     [InlineData(TipoComprobante.FacturaB,CondicionIva.ResponsableInscripto,CondicionIva.Exento)]
     [InlineData(TipoComprobante.FacturaC,CondicionIva.Monotributista,CondicionIva.ResponsableInscripto)]
     [InlineData(TipoComprobante.FacturaC,CondicionIva.Exento,CondicionIva.ConsumidorFinal)]
+    [InlineData(TipoComprobante.FacturaA,CondicionIva.ResponsableInscripto,CondicionIva.MonotributistaSocial)]
+    [InlineData(TipoComprobante.FacturaA,CondicionIva.ResponsableInscripto,
+        CondicionIva.MonotributoTrabajadorIndependientePromovido)]
+    [InlineData(TipoComprobante.FacturaB,CondicionIva.ResponsableInscripto,CondicionIva.IvaNoAlcanzado)]
+    [InlineData(TipoComprobante.FacturaB,CondicionIva.ResponsableInscripto,CondicionIva.ClienteDelExterior)]
+    [InlineData(TipoComprobante.FacturaC,CondicionIva.MonotributistaSocial,CondicionIva.ConsumidorFinal)]
+    [InlineData(TipoComprobante.FacturaC,CondicionIva.Monotributista,CondicionIva.IvaLiberadoLey19640)]
     public void EsValido_CombinacionPermitida_DevuelveTrue(TipoComprobante tipo,CondicionIva emisor,
         CondicionIva receptor)
     {
@@ -27,6 +34,9 @@ public class ValidadorCompatibilidadComprobanteTests
     [InlineData(TipoComprobante.FacturaB,CondicionIva.Monotributista,CondicionIva.ConsumidorFinal)]
     [InlineData(TipoComprobante.FacturaC,CondicionIva.ResponsableInscripto,CondicionIva.ConsumidorFinal)]
     [InlineData((TipoComprobante)999,CondicionIva.ResponsableInscripto,CondicionIva.ConsumidorFinal)]
+    [InlineData(TipoComprobante.FacturaB,CondicionIva.ResponsableInscripto,CondicionIva.Monotributista)]
+    [InlineData(TipoComprobante.FacturaA,CondicionIva.ResponsableInscripto,CondicionIva.IvaNoAlcanzado)]
+    [InlineData(TipoComprobante.FacturaC,CondicionIva.Monotributista,(CondicionIva)999)]
     public void EsValido_CombinacionNoPermitida_DevuelveFalse(TipoComprobante tipo, CondicionIva emisor,
         CondicionIva receptor)
     {
