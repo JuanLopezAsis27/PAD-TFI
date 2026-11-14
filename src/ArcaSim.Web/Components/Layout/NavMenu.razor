@@ -1,6 +1,6 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">ArcaSim</a>
+        <a class="navbar-brand fw-bold" href="">ArcaSim · ARCA</a>
     </div>
 </div>
 
@@ -10,10 +10,32 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Inicio
+                Inicio
             </NavLink>
         </div>
 
-        @* TODO: agregar las páginas del portal (Emitir comprobante, Mis comprobantes, Constatar, ...) *@
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="contribuyentes">
+                Contribuyentes y API Key
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="emitir">
+                Emitir Comprobante
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="comprobantes">
+                Mis Comprobantes (QR)
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="constatacion">
+                Constatar Comprobante
+            </NavLink>
+        </div>
     </nav>
 </div>

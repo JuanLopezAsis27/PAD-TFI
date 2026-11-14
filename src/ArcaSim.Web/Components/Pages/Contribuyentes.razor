@@ -1,0 +1,325 @@
+@page "/contribuyentes"
+@rendermode InteractiveServer
+@inject ArcaSimApiCliente Api
+
+<PageTitle>Contribuyentes, Puntos de Venta y API Key · ArcaSim</PageTitle>
+
+<h2 class="mb-3">Contribuyentes, Puntos de Venta y API Key</h2>
+
+@if (!string.IsNullOrWhiteSpace(_mensajeExito))
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        @_mensajeExito
+        <button type="button" class="btn-close" @onclick="() => _mensajeExito = null"></button>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(_mensajeError))
+{
+    <div class="alert alert-danger alert-dismissible fade show">
+        <strong>Error:</strong> @_mensajeError
+        <button type="button" class="btn-close" @onclick="() => _mensajeError = null"></button>
+    </div>
+}
+
+@if (_apiKeyGenerada is not null)
+{
+    <div class="alert alert-warning border-warning shadow-sm mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="alert-heading mb-1">API Key generada para CUIT <code>@_apiKeyGenerada.Cuit</code></h5>
+                <p class="mb-2 small">@_apiKeyGenerada.Mensaje</p>
+            </div>
+            <button type="button" class="btn-close" @onclick="() => _apiKeyGenerada = null"></button>
+        </div>
+        <div class="p-2 bg-dark text-light rounded font-monospace mb-2">
+            @_apiKeyGenerada.ApiKey
+        </div>
+        <details class="small">
+            <summary class="fw-semibold" style="cursor:pointer">Ver cómo enviarla en el bloque &lt;ar:Auth&gt; de SOAP WSFEv1</summary>
+            <pre class="bg-light p-2 border rounded mt-2 mb-0"><code>&lt;ar:Auth&gt;
+  &lt;ar:Token&gt;@_apiKeyGenerada.ApiKey&lt;/ar:Token&gt;
+  &lt;ar:Sign&gt;&lt;/ar:Sign&gt;
+  &lt;ar:Cuit&gt;@_apiKeyGenerada.Cuit&lt;/ar:Cuit&gt;
+&lt;/ar:Auth&gt;</code></pre>
+        </details>
+    </div>
+}
+
+<div class="row g-4">
+    <!-- Columna izquierda: Alta de Contribuyente -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <strong>Dar de alta nuevo contribuyente</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tipo de Persona</label>
+                    <select class="form-select" @bind="_nuevo.TipoPersona">
+                        <option value="Humana">Persona Humana (valida identidad con RENAPER)</option>
+                        <option value="Juridica">Persona Jurídica ( Sociedad / Fundación )</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">CUIT (11 dígitos sin guiones)</label>
+                    <input class="form-control" @bind="_nuevo.Cuit" maxlength="11" placeholder="Ej: 20401112228" />
+                </div>
+
+                @if (_nuevo.TipoPersona == "Humana")
+                {
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nombre(s)</label>
+                            <input class="form-control" @bind="_nuevo.Nombre" placeholder="Ej: Lucas Matias" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Apellido(s)</label>
+                            <input class="form-control" @bind="_nuevo.Apellido" placeholder="Ej: Gomez" />
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 small">
+                        <strong>Integración con RENAPER:</strong> El DNI se extrae de la CUIT y se valida que nombre, apellido y edad mínima (18 años) coincidan.
+                        <div class="mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary me-1" @onclick="CargarEjemploRenaper1">
+                                Cargar ejemplo 1 (Lucas Gomez)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CargarEjemploRenaper2">
+                                Cargar ejemplo 2 (Juan Pérez)
+                            </button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Razón Social</label>
+                        <input class="form-control" @bind="_nuevo.RazonSocial" placeholder="Ej: Mi Empresa S.R.L." />
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Condición frente al IVA</label>
+                    <select class="form-select" @bind="_nuevo.CondicionIva">
+                        <option value="1">1 - IVA Responsable Inscripto</option>
+                        <option value="6">6 - Responsable Monotributo</option>
+                        <option value="4">4 - IVA Sujeto Exento</option>
+                        <option value="13">13 - Monotributista Social</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary w-100" @onclick="RegistrarContribuyenteAsync" disabled="@_procesando">
+                    @(_procesando ? "Procesando..." : "Registrar Contribuyente")
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna derecha: Listado, Puntos de Venta y API Key -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <strong>Contribuyentes registrados (@_contribuyentes.Count)</strong>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CargarContribuyentesAsync">Actualizar</button>
+            </div>
+            <div class="card-body">
+                @if (_cargando)
+                {
+                    <p class="text-muted mb-0">Cargando contribuyentes...</p>
+                }
+                else if (_contribuyentes.Count == 0)
+                {
+                    <p class="text-muted mb-0">No hay contribuyentes registrados.</p>
+                }
+                else
+                {
+                    @foreach (var c in _contribuyentes)
+                    {
+                        <div class="border rounded p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                <div>
+                                    <h5 class="mb-1">@c.NombreORazonSocial</h5>
+                                    <div class="small text-muted">
+                                        CUIT: <code>@c.Cuit</code> · Persona: <strong>@c.TipoPersona</strong> ·
+                                        <span class="badge bg-info text-dark">@c.CondicionIvaDescripcion</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-warning" @onclick="() => GenerarApiKeyAsync(c.Cuit)">
+                                        Generar / Regenerar API Key
+                                    </button>
+                                    <a href="emitir?cuit=@c.Cuit" class="btn btn-sm btn-outline-primary">
+                                        Emitir factura
+                                    </a>
+                                </div>
+                            </div>
+
+                            <hr class="my-2" />
+
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <span class="small fw-semibold me-2">Puntos de venta:</span>
+                                    @if (c.PuntosVenta.Count == 0)
+                                    {
+                                        <span class="text-muted small">Sin puntos de venta</span>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var pv in c.PuntosVenta)
+                                        {
+                                            <span class="badge @(pv.Habilitado ? "bg-success" : "bg-secondary") me-1">
+                                                N° @pv.Numero.ToString("D5") @(pv.Habilitado ? "(Habilitado)" : "(Deshabilitado)")
+                                            </span>
+                                        }
+                                    }
+                                </div>
+
+                                <div class="input-group input-group-sm" style="max-width: 260px;">
+                                    <span class="input-group-text">Nuevo PV N°</span>
+                                    <input type="number" min="1" max="99999" class="form-control"
+                                           value="@ObtenerNumeroPvTemporal(c.Cuit)"
+                                           @onchange="e => CambiarNumeroPvTemporal(c.Cuit, e.Value?.ToString())" />
+                                    <button class="btn btn-outline-success" type="button"
+                                            @onclick="() => AgregarPuntoVentaAsync(c.Cuit)">
+                                        + Agregar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ContribuyenteResponse> _contribuyentes = [];
+    private RegistrarContribuyenteRequest _nuevo = new() { TipoPersona = "Humana", CondicionIva = 6 };
+    private readonly Dictionary<string, int> _nuevoPuntoVentaPorCuit = new();
+
+    private bool _cargando = true;
+    private bool _procesando;
+    private string? _mensajeExito;
+    private string? _mensajeError;
+    private ApiKeyResponse? _apiKeyGenerada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarContribuyentesAsync();
+    }
+
+    private async Task CargarContribuyentesAsync()
+    {
+        _cargando = true;
+        try
+        {
+            _contribuyentes = await Api.ListarContribuyentesAsync();
+            foreach (var c in _contribuyentes)
+            {
+                int siguiente = c.PuntosVenta.Count > 0 ? c.PuntosVenta.Max(p => p.Numero) + 1 : 1;
+                _nuevoPuntoVentaPorCuit[c.Cuit] = siguiente;
+            }
+        }
+        catch (Exception ex)
+        {
+            _mensajeError = $"No se pudieron cargar los contribuyentes: {ex.Message}";
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private void CargarEjemploRenaper1()
+    {
+        _nuevo.TipoPersona = "Humana";
+        _nuevo.Cuit = "20401112228";
+        _nuevo.Nombre = "Lucas Matias";
+        _nuevo.Apellido = "Gomez";
+        _nuevo.CondicionIva = 6;
+    }
+
+    private void CargarEjemploRenaper2()
+    {
+        _nuevo.TipoPersona = "Humana";
+        _nuevo.Cuit = "20301234563";
+        _nuevo.Nombre = "Juan Carlos";
+        _nuevo.Apellido = "Pérez";
+        _nuevo.CondicionIva = 1;
+    }
+
+    private async Task RegistrarContribuyenteAsync()
+    {
+        _mensajeExito = null;
+        _mensajeError = null;
+        _procesando = true;
+
+        try
+        {
+            var (creado, error) = await Api.RegistrarContribuyenteAsync(_nuevo);
+            if (error is not null || creado is null)
+            {
+                _mensajeError = error ?? "No se pudo registrar el contribuyente.";
+                return;
+            }
+
+            _mensajeExito = $"Contribuyente {creado.NombreORazonSocial} (CUIT {creado.Cuit}) dado de alta correctamente.";
+            _nuevo = new RegistrarContribuyenteRequest { TipoPersona = _nuevo.TipoPersona, CondicionIva = 6 };
+            await CargarContribuyentesAsync();
+        }
+        finally
+        {
+            _procesando = false;
+        }
+    }
+
+    private int ObtenerNumeroPvTemporal(string cuit)
+        => _nuevoPuntoVentaPorCuit.TryGetValue(cuit, out var n) ? n : 1;
+
+    private void CambiarNumeroPvTemporal(string cuit, string? valor)
+    {
+        if (int.TryParse(valor, out var n) && n > 0)
+            _nuevoPuntoVentaPorCuit[cuit] = n;
+    }
+
+    private async Task AgregarPuntoVentaAsync(string cuit)
+    {
+        _mensajeExito = null;
+        _mensajeError = null;
+
+        int numero = ObtenerNumeroPvTemporal(cuit);
+        var (creado, error) = await Api.RegistrarPuntoVentaAsync(cuit, new RegistrarPuntoVentaRequest
+        {
+            Numero = numero,
+            Habilitado = true
+        });
+
+        if (error is not null || creado is null)
+        {
+            _mensajeError = error ?? "No se pudo dar de alta el punto de venta.";
+            return;
+        }
+
+        _mensajeExito = $"Punto de venta N° {creado.Numero:D5} agregado al CUIT {cuit}.";
+        await CargarContribuyentesAsync();
+    }
+
+    private async Task GenerarApiKeyAsync(string cuit)
+    {
+        _mensajeExito = null;
+        _mensajeError = null;
+
+        var (datos, error) = await Api.GenerarApiKeyAsync(cuit);
+        if (error is not null || datos is null)
+        {
+            _mensajeError = error ?? "No se pudo generar la API Key.";
+            return;
+        }
+
+        _apiKeyGenerada = datos;
+    }
+}
+

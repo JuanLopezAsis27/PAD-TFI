@@ -182,3 +182,4 @@ public class ArcaSimApiCliente(HttpClient http)
         return $"Error al comunicarse con la API (código {(int)response.StatusCode}).";
     }
 }
+
