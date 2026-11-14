@@ -1,6 +1,8 @@
 using ArcaSim.Infraestructura.Persistencia;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ArcaSim.Aplicacion.Interfaces;
+using ArcaSim.Infraestructura.Seguridad;
 
 namespace ArcaSim.Infraestructura;
 
@@ -13,6 +15,8 @@ public static class DependencyInjection
     public static IServiceCollection AddInfraestructura(this IServiceCollection services, string connectionString)
     {
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+
+        services.AddScoped<IValidadorApiKey, ValidadorApiKey>();
 
         return services;
     }

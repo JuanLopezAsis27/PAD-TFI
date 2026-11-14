@@ -2,6 +2,7 @@ using ArcaSim.Api.Soap.Wsfev1;
 using ArcaSim.Infraestructura;
 using Scalar.AspNetCore;
 using SoapCore;
+using ArcaSim.Aplicacion.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,8 @@ builder.Services.AddOpenApi();
 // SOAP (lo usan los sistemas de otros grupos, igual que con ARCA)
 builder.Services.AddSoapCore();
 builder.Services.AddScoped<IServiceSoap, ServiceSoap>();
+//Servicios de Aplicacion
+builder.Services.AddScoped<ComprobanteServicio>();
 // A futuro (opcional): registrar el servicio WSAA (loginCms) para autenticar con certificados
 
 builder.Services.AddInfraestructura(
