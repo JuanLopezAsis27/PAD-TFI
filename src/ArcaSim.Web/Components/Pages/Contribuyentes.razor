@@ -27,7 +27,7 @@
     <div class="alert alert-warning border-warning shadow-sm mb-4">
         <div class="d-flex justify-content-between align-items-start">
             <div>
-                <h5 class="alert-heading mb-1">API Key generada para CUIT <code>@_apiKeyGenerada.Cuit</code></h5>
+                <h5 class="alert-heading mb-1">API Key generada para CUIT <span class="font-monospace text-dark fw-semibold">@_apiKeyGenerada.Cuit</span></h5>
                 <p class="mb-2 small">@_apiKeyGenerada.Mensaje</p>
             </div>
             <button type="button" class="btn-close" @onclick="() => _apiKeyGenerada = null"></button>
@@ -142,13 +142,13 @@
                                 <div>
                                     <h5 class="mb-1">@c.NombreORazonSocial</h5>
                                     <div class="small text-muted">
-                                        CUIT: <code>@c.Cuit</code> · Persona: <strong>@c.TipoPersona</strong> ·
-                                        <span class="badge bg-info text-dark">@c.CondicionIvaDescripcion</span>
+                                        CUIT: <span class="font-monospace text-dark fw-semibold">@c.Cuit</span> · Persona: <strong>@c.TipoPersona</strong> ·
+                                        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">@c.CondicionIvaDescripcion</span>
                                     </div>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button class="btn btn-sm btn-warning" @onclick="() => GenerarApiKeyAsync(c.Cuit)">
-                                        Generar / Regenerar API Key
+                                    <button class="btn btn-outline-dark btn-sm" @onclick="() => GenerarApiKeyAsync(c.Cuit)">
+                                        <i class="bi bi-key me-1"></i> Generar / Regenerar API Key
                                     </button>
                                     <a href="emitir?cuit=@c.Cuit" class="btn btn-sm btn-outline-primary">
                                         Emitir factura
@@ -156,26 +156,25 @@
                                 </div>
                             </div>
 
-                            <hr class="my-2" />
-
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                <div>
-                                    <span class="small fw-semibold me-2">Puntos de venta:</span>
-                                    @if (c.PuntosVenta.Count == 0)
+                            <div class="border-top pt-2 mt-2">
+                                <span class="small fw-semibold me-2">Puntos de venta:</span>
+                                @if (c.PuntosVenta.Count == 0)
+                                {
+                                    <span class="text-muted small">Sin puntos de venta</span>
+                                }
+                                else
+                                {
+                                    @foreach (var pv in c.PuntosVenta)
                                     {
-                                        <span class="text-muted small">Sin puntos de venta</span>
+                                        <span class="badge @(pv.Habilitado ? "bg-success" : "bg-secondary") me-1">
+                                            N° @pv.Numero.ToString("D5") @(pv.Habilitado ? "(Habilitado)" : "(Deshabilitado)")
+                                        </span>
                                     }
-                                    else
-                                    {
-                                        @foreach (var pv in c.PuntosVenta)
-                                        {
-                                            <span class="badge @(pv.Habilitado ? "bg-success" : "bg-secondary") me-1">
-                                                N° @pv.Numero.ToString("D5") @(pv.Habilitado ? "(Habilitado)" : "(Deshabilitado)")
-                                            </span>
-                                        }
-                                    }
-                                </div>
+                                }
+                            </div>
 
+                            <div class="border-top pt-2 mt-2 d-flex justify-content-between align-items-center">
+                                <span class="small text-muted">Alta de nuevo punto de venta</span>
                                 <div class="input-group input-group-sm" style="max-width: 260px;">
                                     <span class="input-group-text">Nuevo PV N°</span>
                                     <input type="number" min="1" max="99999" class="form-control"

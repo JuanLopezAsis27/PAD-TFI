@@ -27,12 +27,12 @@
             var c = _resultado.Comprobante;
             <hr />
             <div class="row g-2 small">
-                <div class="col-md-4"><strong>CUIT Emisor:</strong> <code>@c.CuitEmisor</code></div>
-                <div class="col-md-4"><strong>Comprobante:</strong> @c.TipoComprobanteDescripcion N° <code>@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</code></div>
+                <div class="col-md-4"><strong>CUIT Emisor:</strong> <span class="font-monospace text-dark fw-semibold">@c.CuitEmisor</span></div>
+                <div class="col-md-4"><strong>Comprobante:</strong> @c.TipoComprobanteDescripcion N° <span class="font-monospace text-dark fw-semibold">@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</span></div>
                 <div class="col-md-4"><strong>Fecha Emisión:</strong> @c.Fecha.ToString("dd/MM/yyyy")</div>
-                <div class="col-md-4"><strong>Receptor:</strong> Doc. @c.TipoDocumentoReceptor — <code>@c.NumeroDocumentoReceptor</code></div>
+                <div class="col-md-4"><strong>Receptor:</strong> Doc. @c.TipoDocumentoReceptor — <span class="font-monospace text-dark fw-semibold">@c.NumeroDocumentoReceptor</span></div>
                 <div class="col-md-4"><strong>Importe Total:</strong> $ @c.ImporteTotal.ToString("N2") (@c.Moneda)</div>
-                <div class="col-md-4"><strong>CAE:</strong> <code>@c.Cae</code> (Vto: @c.FechaVencimientoCae?.ToString("dd/MM/yyyy"))</div>
+                <div class="col-md-4"><strong>CAE:</strong> <span class="font-monospace text-dark fw-semibold">@c.Cae</span> (Vto: @c.FechaVencimientoCae?.ToString("dd/MM/yyyy"))</div>
             </div>
         }
     </div>

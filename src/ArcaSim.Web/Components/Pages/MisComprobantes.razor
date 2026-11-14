@@ -27,15 +27,23 @@
                     <div class="row g-2 mb-3">
                         <div class="col-sm-6">
                             <span class="text-muted small d-block">CUIT Emisor</span>
-                            <code>@_seleccionado.CuitEmisor</code>
+                            <span class="font-monospace text-dark fw-semibold">@_seleccionado.CuitEmisor</span>
                         </div>
                         <div class="col-sm-6">
                             <span class="text-muted small d-block">Fecha de Emisión</span>
                             <strong>@_seleccionado.Fecha.ToString("dd/MM/yyyy")</strong>
                         </div>
                         <div class="col-sm-6">
-                            <span class="text-muted small d-block">Receptor (Doc. Tipo @_seleccionado.TipoDocumentoReceptor)</span>
-                            <code>@_seleccionado.NumeroDocumentoReceptor</code>
+                            <span class="text-muted small d-block">Receptor</span>
+                            @if (_seleccionado.TipoDocumentoReceptor == 99)
+                            {
+                                <strong>Consumidor Final</strong>
+                            }
+                            else
+                            {
+                                <span class="small text-muted">@ObtenerEtiquetaDocumento(_seleccionado.TipoDocumentoReceptor):</span>
+                                <span class="font-monospace text-dark fw-semibold">@_seleccionado.NumeroDocumentoReceptor</span>
+                            }
                         </div>
                         <div class="col-sm-6">
                             <span class="text-muted small d-block">Moneda / Cotización</span>
@@ -70,7 +78,7 @@
                         <div class="row">
                             <div class="col-sm-6">
                                 <span class="text-muted small d-block">CAE (Código de Autorización Electrónico)</span>
-                                <code class="fs-5 fw-bold text-success">@(_seleccionado.Cae ?? "-")</code>
+                                <span class="font-monospace text-dark fw-semibold fs-5">@(_seleccionado.Cae ?? "-")</span>
                             </div>
                             <div class="col-sm-6">
                                 <span class="text-muted small d-block">Fecha de Vencimiento del CAE</span>
@@ -170,15 +178,21 @@
                     {
                         <tr class="@(_seleccionado == c ? "table-primary" : "")">
                             <td>@c.Fecha.ToString("dd/MM/yyyy")</td>
-                            <td><code>@c.CuitEmisor</code></td>
-                            <td><span class="badge bg-secondary">@c.TipoComprobanteDescripcion</span></td>
-                            <td><code>@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</code></td>
+                            <td><span class="font-monospace text-dark fw-semibold">@c.CuitEmisor</span></td>
+                            <td><span class="@ObtenerClaseBadgeComprobante(c.TipoComprobante)">@c.TipoComprobanteDescripcion</span></td>
+                            <td><span class="font-monospace text-dark fw-semibold">@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</span></td>
                             <td>
-                                <span class="small text-muted">Doc @c.TipoDocumentoReceptor:</span>
-                                <code>@c.NumeroDocumentoReceptor</code>
+                                @if (c.TipoDocumentoReceptor == 99)
+                                {
+                                    <span>Consumidor Final</span>
+                                }
+                                else
+                                {
+                                    <span>@ObtenerEtiquetaDocumento(c.TipoDocumentoReceptor): <span class="font-monospace text-dark fw-semibold">@c.NumeroDocumentoReceptor</span></span>
+                                }
                             </td>
                             <td class="text-end fw-semibold">$ @c.ImporteTotal.ToString("N2")</td>
-                            <td><code>@(c.Cae ?? "-")</code></td>
+                            <td><span class="font-monospace text-dark fw-semibold">@(c.Cae ?? "-")</span></td>
                             <td>@(c.FechaVencimientoCae?.ToString("dd/MM/yyyy") ?? "-")</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" @onclick="() => _seleccionado = c">
@@ -239,5 +253,21 @@
             _cargando = false;
         }
     }
+
+    private static string ObtenerClaseBadgeComprobante(int tipo) => tipo switch
+    {
+        1 or 2 or 3 => "badge bg-primary",
+        6 or 7 or 8 => "badge bg-secondary",
+        11 or 12 or 13 => "badge bg-success",
+        _ => "badge bg-secondary"
+    };
+
+    private static string ObtenerEtiquetaDocumento(int tipoDoc) => tipoDoc switch
+    {
+        80 => "CUIT",
+        86 => "CUIL",
+        96 => "DNI",
+        _ => $"Doc {tipoDoc}"
+    };
 }
 

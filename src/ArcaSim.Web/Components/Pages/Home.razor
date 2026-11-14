@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="mb-1">Portal ArcaSim</h1>
-        <p class="text-muted mb-0">Simulador de ARCA (ex AFIP) para autorización y constatación de comprobantes electrónicos.</p>
+        <p class="text-muted mb-0">Simulador de ARCA (ex AFIP) para emisión, autorización y constatación de comprobantes electrónicos.</p>
     </div>
     <div>
         @if (_cargandoEstado)
@@ -16,7 +16,7 @@
         }
         else if (_apiDisponible)
         {
-            <span class="badge bg-success">API Online (FEDummy OK)</span>
+            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">API Online (FEDummy OK)</span>
         }
         else
         {
@@ -40,7 +40,7 @@
                 <p class="card-text text-muted small flex-grow-1">
                     Alta de personas humanas (validadas con RENAPER) y jurídicas, habilitación de puntos de venta y generación de API Key para SOAP WSFEv1.
                 </p>
-                <a href="contribuyentes" class="btn btn-primary btn-sm mt-2">Gestionar contribuyentes</a>
+                <a href="contribuyentes" class="btn btn-primary w-100 mt-2">Gestionar contribuyentes</a>
             </div>
         </div>
     </div>
@@ -52,7 +52,7 @@
                 <p class="card-text text-muted small flex-grow-1">
                     Emisión manual de Facturas A, B y C con validación de reglas de ARCA (RG 4291 / RG 5616) y obtención inmediata de CAE.
                 </p>
-                <a href="emitir" class="btn btn-primary btn-sm mt-2">Emitir comprobante</a>
+                <a href="emitir" class="btn btn-primary w-100 mt-2">Emitir comprobante</a>
             </div>
         </div>
     </div>
@@ -64,19 +64,19 @@
                 <p class="card-text text-muted small flex-grow-1">
                     Consulta de comprobantes emitidos por CUIT, visualización del CAE otorgado y generación del código QR oficial de ARCA.
                 </p>
-                <a href="comprobantes" class="btn btn-primary btn-sm mt-2">Ver comprobantes</a>
+                <a href="comprobantes" class="btn btn-primary w-100 mt-2">Ver comprobantes</a>
             </div>
         </div>
     </div>
 
     <div class="col-md-6 col-xl-3">
-        <div class="card h-100 shadow-sm border-primary">
+        <div class="card h-100 shadow-sm">
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">4. Constatación Pública</h5>
                 <p class="card-text text-muted small flex-grow-1">
                     Verificación pública de facturas electrónicas ingresando sus datos + CAE o pegando la URL del código QR.
                 </p>
-                <a href="constatacion" class="btn btn-outline-primary btn-sm mt-2">Constatar factura</a>
+                <a href="constatacion" class="btn btn-primary w-100 mt-2">Constatar factura</a>
             </div>
         </div>
     </div>
@@ -104,16 +104,23 @@
                     @foreach (var c in _contribuyentes)
                     {
                         <tr>
-                            <td><code>@c.Cuit</code></td>
+                            <td><span class="font-monospace text-dark fw-semibold">@c.Cuit</span></td>
                             <td>@c.NombreORazonSocial</td>
                             <td>@c.TipoPersona</td>
-                            <td><span class="badge bg-info text-dark">@c.CondicionIvaDescripcion</span></td>
+                            <td><span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle">@c.CondicionIvaDescripcion</span></td>
                             <td>
-                                @foreach (var pv in c.PuntosVenta)
+                                @if (c.PuntosVenta.Count == 0)
                                 {
-                                    <span class="badge @(pv.Habilitado ? "bg-success" : "bg-secondary") me-1">
-                                        PV @pv.Numero.ToString("D5") @(pv.Habilitado ? "" : "(Deshab.)")
-                                    </span>
+                                    <span class="badge bg-light text-secondary border">Sin PV</span>
+                                }
+                                else
+                                {
+                                    @foreach (var pv in c.PuntosVenta)
+                                    {
+                                        <span class="badge @(pv.Habilitado ? "bg-success" : "bg-secondary") me-1">
+                                            PV @pv.Numero.ToString("D5") @(pv.Habilitado ? "" : "(Deshab.)")
+                                        </span>
+                                    }
                                 }
                             </td>
                             <td>
