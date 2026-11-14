@@ -4,6 +4,81 @@
 GET {{ArcaSim.Api_HostAddress}}/api/estado
 Accept: application/json
 
+### REST: listar contribuyentes
+GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes
+Accept: application/json
+
+### REST: obtener contribuyente por CUIT (Comercio Demo S.A.)
+GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671
+Accept: application/json
+
+### REST: alta de contribuyente persona humana (validada con RENAPER simulado)
+POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes
+Content-Type: application/json
+
+{
+  "cuit": "20401112228",
+  "tipoPersona": "Humana",
+  "nombre": "Lucas Matias",
+  "apellido": "Gomez",
+  "condicionIva": 6
+}
+
+### REST: alta de punto de venta
+POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671/puntos-venta
+Content-Type: application/json
+
+{
+  "numero": 4,
+  "habilitado": true
+}
+
+### REST: generar API Key para un contribuyente
+POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671/api-key
+Accept: application/json
+
+### REST: listar comprobantes de un emisor
+GET {{ArcaSim.Api_HostAddress}}/api/comprobantes?cuit=30712345671
+Accept: application/json
+
+### REST: emitir comprobante manual (Factura B a Consumidor Final)
+POST {{ArcaSim.Api_HostAddress}}/api/comprobantes
+Content-Type: application/json
+
+{
+  "cuitEmisor": "30712345671",
+  "puntoVentaNumero": 1,
+  "tipoComprobante": 6,
+  "concepto": 1,
+  "tipoDocumentoReceptor": 99,
+  "numeroDocumentoReceptor": "0",
+  "condicionIvaReceptor": 5,
+  "importeNeto": 10000,
+  "importeIva": 2100,
+  "importeTotal": 12100,
+  "moneda": "PES",
+  "cotizacion": 1,
+  "alicuotasIva": [
+    {
+      "alicuotaId": 5,
+      "baseImponible": 10000,
+      "importeIva": 2100
+    }
+  ]
+}
+
+### REST: constatar comprobante por datos
+POST {{ArcaSim.Api_HostAddress}}/api/constatacion
+Content-Type: application/json
+
+{
+  "cuitEmisor": "30712345671",
+  "puntoVentaNumero": 1,
+  "tipoComprobante": 1,
+  "numero": 1,
+  "cae": "75000000000000"
+}
+
 ### SOAP: FEDummy (igual que en ARCA)
 POST {{ArcaSim.Api_HostAddress}}/wsfev1/service.asmx
 Content-Type: text/xml; charset=utf-8

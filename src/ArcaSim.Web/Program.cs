@@ -1,10 +1,17 @@
 using ArcaSim.Web.Components;
+using ArcaSim.Web.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+var apiUrlBase = builder.Configuration["Api:UrlBase"] ?? "http://localhost:5030";
+builder.Services.AddHttpClient<ArcaSimApiCliente>(client =>
+{
+    client.BaseAddress = new Uri(apiUrlBase.TrimEnd('/') + "/");
+});
 
 var app = builder.Build();
 

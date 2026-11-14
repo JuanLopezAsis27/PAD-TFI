@@ -70,8 +70,12 @@ public class ComprobanteServicio
                     "No existe el punto de venta indicado."));
         }
 
-        if (_comprobanteRepositorio.ObtenerPorIdentificacion(comprobante.CUITEmisor,
-            comprobante.PuntoVentaNumero, comprobante.Tipo, comprobante.Numero) is not null)
+        // Un comprobante rechazado no ocupa su número (como en ARCA): se puede volver a enviar.
+        var existente = _comprobanteRepositorio.ObtenerPorIdentificacion(comprobante.CUITEmisor,
+            comprobante.PuntoVentaNumero, comprobante.Tipo, comprobante.Numero);
+
+        if (existente is not null &&
+            existente.EstadoAutorizacion != EstadoAutorizacionComprobante.Rechazado)
         {
             return ResultadoValidacion.ConErrores(new ErrorValidacion("DOM-014",
                     "Ya existe un comprobante con esa identificación."));
@@ -79,15 +83,21 @@ public class ComprobanteServicio
 
         comprobante.PuntoVenta = puntoVenta;
 
-        long ultimoNumeroAutorizado =
-            _comprobanteRepositorio.ObtenerUltimoNumeroAutorizado(comprobante.CUITEmisor,
-                comprobante.PuntoVentaNumero, comprobante.Tipo);
+        var ultimoAutorizado = _comprobanteRepositorio.ObtenerUltimoAutorizado(comprobante.CUITEmisor,
+            comprobante.PuntoVentaNumero, comprobante.Tipo);
 
         var resultado = ValidadorComprobante.Validar(comprobante, contribuyente,
-            contribuyente.CondicionIva, fechaGeneracion, ultimoNumeroAutorizado);
+            contribuyente.CondicionIva, fechaGeneracion, ultimoAutorizado?.Numero ?? 0,
+            ultimoAutorizado?.Fecha);
 
         if (!resultado.EsValido)
             return resultado;
+
+        if (existente is not null)
+        {
+            puntoVenta.Comprobantes.Remove(existente);
+            _comprobanteRepositorio.Eliminar(existente);
+        }
 
         puntoVenta.Comprobantes.Add(comprobante);
         _comprobanteRepositorio.Agregar(comprobante);
@@ -121,7 +131,7 @@ public class ComprobanteServicio
     public long ConsultarUltimoNumeroAutorizado(string cuitEmisor, int puntoVentaNumero,
         TipoComprobante tipo)
     {
-        return _comprobanteRepositorio.ObtenerUltimoNumeroAutorizado(cuitEmisor, puntoVentaNumero, tipo);
+        return _comprobanteRepositorio.ObtenerUltimoAutorizado(cuitEmisor, puntoVentaNumero, tipo)?.Numero ?? 0;
     }
 
     public ResultadoConstatacion Constatar(string cuitEmisor, int puntoVentaNumero,
