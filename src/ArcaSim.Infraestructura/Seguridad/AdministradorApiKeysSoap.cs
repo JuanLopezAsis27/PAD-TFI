@@ -83,6 +83,50 @@ public sealed class AdministradorApiKeysSoap
     }
 
     // =====================================================
+    // REGENERAR API KEY (la usa el portal)
+    // =====================================================
+
+    public async Task<ApiKeySoapRegenerada> RegenerarAsync(
+        string cuit,
+        CancellationToken cancellationToken = default)
+    {
+        // Mismo control de formato que GenerarAsync, antes de abrir la transacción.
+        if (string.IsNullOrWhiteSpace(cuit) ||
+            cuit.Length != 11 ||
+            !cuit.All(char.IsAsciiDigit))
+        {
+            throw new ArgumentException(
+                "La CUIT debe contener exactamente 11 dígitos.",
+                nameof(cuit));
+        }
+
+        // Revocar las anteriores y crear la nueva juntas: si algo falla,
+        // la clave que estaba en uso sigue funcionando.
+        await using var transaccion = await _context.Database
+            .BeginTransactionAsync(cancellationToken);
+
+        DateTime fechaRevocacion = DateTime.UtcNow;
+
+        int revocadas = await _context.ApiKeysSoap
+            .Where(x => x.Cuit == cuit && !x.Revocada)
+            .ExecuteUpdateAsync(
+                actualizacion => actualizacion
+                    .SetProperty(x => x.Revocada, true)
+                    .SetProperty(
+                        x => x.FechaRevocacion,
+                        fechaRevocacion),
+                cancellationToken);
+
+        // Controla que el contribuyente exista; si no, la transacción
+        // se descarta y no se revoca nada.
+        var nueva = await GenerarAsync(cuit, cancellationToken);
+
+        await transaccion.CommitAsync(cancellationToken);
+
+        return new ApiKeySoapRegenerada(nueva, revocadas);
+    }
+
+    // =====================================================
     // REVOCAR API KEY
     // =====================================================
 

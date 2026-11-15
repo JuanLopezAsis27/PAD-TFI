@@ -18,6 +18,12 @@ public static class DatosDePrueba
     public const string CuitMonotributista = "27287654311";
     public const string CuitExento = "30709998885";
 
+    /// <summary>CUIT de la cuenta que representa a las personas jurídicas de prueba.</summary>
+    public const string CuitRepresentanteDemo = "20255556666";
+
+    /// <summary>Clave de todas las cuentas de prueba. Solo para desarrollo.</summary>
+    public const string ClaveDeLasCuentasDePrueba = "ArcaSim2026";
+
     /// <returns>La cantidad de contribuyentes nuevos que se cargaron.</returns>
     public static int Cargar(IServiceProvider services)
     {
@@ -26,7 +32,7 @@ public static class DatosDePrueba
         var comprobantes = services.GetRequiredService<IComprobanteRepositorio>();
 
         var cargador = new Cargador(
-            new ContribuyenteServicio(contribuyentes, services.GetRequiredService<IRenaperCliente>()),
+            new ContribuyenteServicio(contribuyentes, services.GetRequiredService<IUsuarioRepositorio>()),
             contribuyentes,
             new PuntoVentaServicio(puntosVenta, contribuyentes),
             new ComprobanteServicio(contribuyentes, puntosVenta, comprobantes),
@@ -83,7 +89,53 @@ public static class DatosDePrueba
             cargados++;
         }
 
+        // Cuentas de Clave Fiscal. Se cargan aparte de los contribuyentes, así también aparecen en bases
+        // que ya tenían los datos de prueba anteriores.
+        var cuentas = new CargadorCuentas(services.GetRequiredService<IUsuarioRepositorio>(),
+            services.GetRequiredService<IHasheadorClave>());
+
+        cuentas.CargarSiNoExiste(CuitMonotributista, "María", "Ejemplo", "maria.ejemplo@example.com",
+            representados: [CuitMonotributista]);
+
+        // Pablo no está inscripto: solo opera las dos personas jurídicas.
+        cuentas.CargarSiNoExiste(CuitRepresentanteDemo, "Pablo", "Demo", "pablo.demo@example.com",
+            representados: [CuitResponsableInscripto, CuitExento]);
+
         return cargados;
+    }
+
+    // Las cuentas de prueba no pasan por RENAPER: son personas ficticias y no deben gastar créditos.
+    private sealed class CargadorCuentas(IUsuarioRepositorio usuarios, IHasheadorClave hasheador)
+    {
+        public void CargarSiNoExiste(string cuit, string nombre, string apellido, string email,
+            string[] representados)
+        {
+            if (usuarios.ObtenerPorCuit(cuit) is null)
+            {
+                usuarios.Agregar(new Usuario
+                {
+                    Cuit = cuit,
+                    Nombre = nombre,
+                    Apellido = apellido,
+                    Email = email,
+                    HashClave = hasheador.Hashear(ClaveDeLasCuentasDePrueba),
+                    FechaAlta = DateTime.UtcNow
+                });
+            }
+
+            foreach (string representado in representados)
+            {
+                if (!usuarios.Representa(cuit, representado))
+                {
+                    usuarios.AgregarRepresentacion(new Representacion
+                    {
+                        CuitUsuario = cuit,
+                        CuitRepresentado = representado,
+                        FechaAlta = DateTime.UtcNow
+                    });
+                }
+            }
+        }
     }
 
     // Factura A del responsable inscripto a la monotributista: productos con IVA 21%.

@@ -1,5 +1,6 @@
 @page "/comprobantes"
 @page "/comprobantes/{CuitRuta}/{PuntoVentaRuta:int}/{TipoRuta:int}/{NumeroRuta:long}"
+@attribute [Authorize]
 @rendermode InteractiveServer
 @inject ArcaSimApiCliente Api
 
@@ -128,7 +129,7 @@
             </div>
             <div class="col-md-5">
                 <select class="form-select form-select-sm" value="@_cuitFiltro" @onchange="OnFiltroCambiadoAsync">
-                    <option value="">-- Todos los contribuyentes --</option>
+                    <option value="">-- Todos mis contribuyentes --</option>
                     @foreach (var c in _contribuyentes)
                     {
                         <option value="@c.Cuit">@c.NombreORazonSocial (@c.Cuit)</option>

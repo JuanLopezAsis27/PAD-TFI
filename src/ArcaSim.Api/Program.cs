@@ -1,8 +1,12 @@
+using ArcaSim.Api.Autenticacion;
 using ArcaSim.Api.Soap.Wsfev1;
 using ArcaSim.Aplicacion.Servicios;
 using ArcaSim.Infraestructura;
 using ArcaSim.Infraestructura.Integraciones.Renaper;
 using ArcaSim.Infraestructura.Persistencia;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using SoapCore;
 using ArcaSim.Aplicacion.Servicios;
@@ -20,17 +24,55 @@ builder.Services.AddScoped<IServiceSoap, ServiceSoap>();
 builder.Services.AddScoped<ComprobanteServicio>();
 // A futuro (opcional): registrar el servicio WSAA (loginCms) para autenticar con certificados
 
+var renaper = builder.Configuration.GetSection(RenaperOpciones.Seccion).Get<RenaperOpciones>() ?? new RenaperOpciones();
+
 builder.Services.AddInfraestructura(
     builder.Configuration.GetConnectionString("ArcaSimDb")
     ?? throw new InvalidOperationException("Falta la connection string 'ArcaSimDb'."),
-    builder.Configuration.GetSection(RenaperOpciones.Seccion).Get<RenaperOpciones>() ?? new RenaperOpciones());
+    renaper);
+
+// Sesión del portal: al ingresar con Clave Fiscal la API entrega un JWT, que el portal manda en cada
+// llamada REST. El SOAP no lo usa: sigue autenticando con la API key del objeto Auth.
+var jwt = builder.Configuration.GetSection(JwtOpciones.Seccion).Get<JwtOpciones>() ?? new JwtOpciones();
+jwt.Validar();
+builder.Services.AddSingleton(jwt);
+builder.Services.AddSingleton<GeneradorTokenJwt>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.MapInboundClaims = false;   // "sub" queda como "sub" (la CUIT/CUIL)
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = jwt.Emisor,
+            ValidAudience = jwt.Audiencia,
+            IssuerSigningKey = GeneradorTokenJwt.CrearClaveDeFirma(jwt.Clave),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            NameClaimType = JwtRegisteredClaimNames.Sub,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddAuthorization();
 
 // Servicios de aplicación (casos de uso compartidos por REST y SOAP)
+builder.Services.AddScoped<ClaveFiscalServicio>();
 builder.Services.AddScoped<ContribuyenteServicio>();
 builder.Services.AddScoped<PuntoVentaServicio>();
 builder.Services.AddScoped<ComprobanteServicio>();
 
 var app = builder.Build();
+
+// Qué RENAPER se usa, para no tener que adivinarlo (la API key nunca se muestra).
+if (renaper.Modo == ModoRenaper.Stub)
+{
+    app.Logger.LogInformation("RENAPER: modo Stub (simulado, sin red ni créditos). Para usar el real: " +
+        "Renaper:Modo = Http y Renaper:ApiKey (ver docs/renaper.md).");
+}
+else
+{
+    app.Logger.LogInformation("RENAPER: modo Http contra {UrlBase} (API key de {Largo} caracteres).",
+        renaper.UrlBase, renaper.ApiKey.Length);
+}
 
 // Migraciones y datos de prueba al iniciar, según el ambiente (sección BaseDeDatos de appsettings).
 app.Services.InicializarBaseDeDatos(
@@ -53,6 +95,7 @@ if (app.Environment.IsDevelopment())
 // A futuro (opcional): WSAA en /ws/services/LoginCms
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

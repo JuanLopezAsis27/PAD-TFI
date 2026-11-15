@@ -61,6 +61,10 @@ public sealed class RenaperClienteHttp(HttpClient http, ILogger<RenaperClienteHt
             if (cuerpo?.DatosCoinciden is not bool datosCoinciden || cuerpo.CumpleEdadMinima is not bool cumpleEdad)
                 throw new RenaperNoDisponibleException("RENAPER devolvió una respuesta incompleta.");
 
+            // Sin el DNI ni el nombre: son datos personales.
+            logger.LogInformation("RENAPER respondió: datosCoinciden = {DatosCoinciden}, cumpleEdadMinima = {CumpleEdad}.",
+                datosCoinciden, cumpleEdad);
+
             return new ResultadoValidacionPersona(datosCoinciden, cumpleEdad);
         }
     }

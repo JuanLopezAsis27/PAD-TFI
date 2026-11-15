@@ -55,6 +55,24 @@ public sealed class AdministradorApiKeysSoapTests
                 await entorno.Administrador.GenerarAsync(cuit));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("123456789")]
+    [InlineData("30712ABC671")]
+    public async Task RegenerarAsync_CuitInvalida_LanzaExcepcionSinTocarLaBase(
+        string cuit)
+    {
+        var entorno = CrearEntorno();
+
+        using var contexto = entorno.Contexto;
+
+        // El contexto no tiene base configurada: si llegara a abrir la
+        // transacción fallaría con otra excepción.
+        await Assert.ThrowsAsync<ArgumentException>(
+            async () =>
+                await entorno.Administrador.RegenerarAsync(cuit));
+    }
+
     // =====================================================
     // PRUEBA 2: ID INVÁLIDO AL REVOCAR
     // =====================================================

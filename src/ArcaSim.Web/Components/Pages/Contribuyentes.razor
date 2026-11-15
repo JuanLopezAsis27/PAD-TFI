@@ -1,10 +1,11 @@
 @page "/contribuyentes"
+@attribute [Authorize]
 @rendermode InteractiveServer
 @inject ArcaSimApiCliente Api
 
-<PageTitle>Contribuyentes, Puntos de Venta y API Key · ArcaSim</PageTitle>
+<PageTitle>Mis Contribuyentes, Puntos de Venta y API Key · ArcaSim</PageTitle>
 
-<h2 class="mb-3">Contribuyentes, Puntos de Venta y API Key</h2>
+<h2 class="mb-3">Mis Contribuyentes, Puntos de Venta y API Key</h2>
 
 @if (!string.IsNullOrWhiteSpace(_mensajeExito))
 {
@@ -47,71 +48,78 @@
 }
 
 <div class="row g-4">
-    <!-- Columna izquierda: Alta de Contribuyente -->
+    <!-- Columna izquierda: Inscripción y alta de personas jurídicas -->
     <div class="col-lg-5">
+        @if (!_cargando && !EstaInscripto)
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <strong>Inscribirme como contribuyente</strong>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Tu identidad ya la validó RENAPER al obtener la Clave Fiscal: te inscribimos con esos datos.
+                    </p>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-5">
+                            <span class="text-muted small d-block">CUIT/CUIL</span>
+                            <span class="font-monospace fw-semibold">@_cuitUsuario</span>
+                        </div>
+                        <div class="col-sm-7">
+                            <span class="text-muted small d-block">Apellido y nombre</span>
+                            <span class="fw-semibold">@_nombreUsuario</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Condición frente al IVA</label>
+                        <select class="form-select" @bind="_inscripcion.CondicionIva">
+                            <option value="6">6 - Responsable Monotributo</option>
+                            <option value="1">1 - IVA Responsable Inscripto</option>
+                            <option value="4">4 - IVA Sujeto Exento</option>
+                            <option value="13">13 - Monotributista Social</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100" @onclick="InscribirmeAsync" disabled="@_procesando">
+                        @(_procesando ? "Procesando..." : "Inscribirme")
+                    </button>
+                </div>
+            </div>
+        }
+
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <strong>Dar de alta nuevo contribuyente</strong>
+            <div class="card-header bg-light">
+                <strong>Alta de persona jurídica que represento</strong>
             </div>
             <div class="card-body">
+                <p class="small text-muted">
+                    Las sociedades y fundaciones no tienen Clave Fiscal propia: las opera la persona que las representa.
+                    Al darla de alta, tu cuenta queda como su representante.
+                </p>
+
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Tipo de Persona</label>
-                    <select class="form-select" @bind="_nuevo.TipoPersona">
-                        <option value="Humana">Persona Humana (valida identidad con RENAPER)</option>
-                        <option value="Juridica">Persona Jurídica ( Sociedad / Fundación )</option>
-                    </select>
+                    <label class="form-label fw-semibold">CUIT de la persona jurídica</label>
+                    <input class="form-control font-monospace" @bind="_juridica.Cuit" maxlength="11" placeholder="Empieza con 30, 33 o 34" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">CUIT (11 dígitos sin guiones)</label>
-                    <input class="form-control" @bind="_nuevo.Cuit" maxlength="11" placeholder="Ej: 20401112228" />
+                    <label class="form-label fw-semibold">Razón Social</label>
+                    <input class="form-control" @bind="_juridica.RazonSocial" placeholder="Ej: Mi Empresa S.R.L." />
                 </div>
-
-                @if (_nuevo.TipoPersona == "Humana")
-                {
-                    <div class="row g-2 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Nombre(s)</label>
-                            <input class="form-control" @bind="_nuevo.Nombre" placeholder="Ej: Lucas Matias" />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Apellido(s)</label>
-                            <input class="form-control" @bind="_nuevo.Apellido" placeholder="Ej: Gomez" />
-                        </div>
-                    </div>
-
-                    <div class="alert alert-info py-2 small">
-                        <strong>Integración con RENAPER:</strong> El DNI se extrae de la CUIT y se valida que nombre, apellido y edad mínima (18 años) coincidan.
-                        <div class="mt-1">
-                            <button type="button" class="btn btn-sm btn-outline-secondary me-1" @onclick="CargarEjemploRenaper1">
-                                Cargar ejemplo 1 (Lucas Gomez)
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="CargarEjemploRenaper2">
-                                Cargar ejemplo 2 (Juan Pérez)
-                            </button>
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Razón Social</label>
-                        <input class="form-control" @bind="_nuevo.RazonSocial" placeholder="Ej: Mi Empresa S.R.L." />
-                    </div>
-                }
 
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Condición frente al IVA</label>
-                    <select class="form-select" @bind="_nuevo.CondicionIva">
+                    <select class="form-select" @bind="_juridica.CondicionIva">
                         <option value="1">1 - IVA Responsable Inscripto</option>
-                        <option value="6">6 - Responsable Monotributo</option>
                         <option value="4">4 - IVA Sujeto Exento</option>
-                        <option value="13">13 - Monotributista Social</option>
+                        <option value="6">6 - Responsable Monotributo</option>
                     </select>
                 </div>
 
-                <button class="btn btn-primary w-100" @onclick="RegistrarContribuyenteAsync" disabled="@_procesando">
-                    @(_procesando ? "Procesando..." : "Registrar Contribuyente")
+                <button class="btn btn-outline-primary w-100" @onclick="RegistrarJuridicaAsync" disabled="@_procesando">
+                    @(_procesando ? "Procesando..." : "Dar de alta persona jurídica")
                 </button>
             </div>
         </div>
@@ -121,7 +129,7 @@
     <div class="col-lg-7">
         <div class="card shadow-sm">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <strong>Contribuyentes registrados (@_contribuyentes.Count)</strong>
+                <strong>Contribuyentes que representás (@_contribuyentes.Count)</strong>
                 <button class="btn btn-sm btn-outline-secondary" @onclick="CargarContribuyentesAsync">Actualizar</button>
             </div>
             <div class="card-body">
@@ -131,7 +139,7 @@
                 }
                 else if (_contribuyentes.Count == 0)
                 {
-                    <p class="text-muted mb-0">No hay contribuyentes registrados.</p>
+                    <p class="text-muted mb-0">Todavía no representás a ningún contribuyente: inscribite o da de alta una persona jurídica.</p>
                 }
                 else
                 {
@@ -147,7 +155,8 @@
                                     </div>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button class="btn btn-outline-dark btn-sm" @onclick="() => GenerarApiKeyAsync(c.Cuit)">
+                                    <button class="btn btn-outline-dark btn-sm" @onclick="() => GenerarApiKeyAsync(c.Cuit)"
+                                            title="Genera una API Key nueva para el web service. La anterior deja de funcionar.">
                                         <i class="bi bi-key me-1"></i> Generar / Regenerar API Key
                                     </button>
                                     <a href="emitir?cuit=@c.Cuit" class="btn btn-sm btn-outline-primary">
@@ -195,9 +204,16 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? EstadoAutenticacion { get; set; }
+
     private List<ContribuyenteResponse> _contribuyentes = [];
-    private RegistrarContribuyenteRequest _nuevo = new() { TipoPersona = "Humana", CondicionIva = 6 };
+    private RegistrarContribuyenteRequest _inscripcion = new() { TipoPersona = "Humana", CondicionIva = 6 };
+    private RegistrarContribuyenteRequest _juridica = new() { TipoPersona = "Juridica", CondicionIva = 1 };
     private readonly Dictionary<string, int> _nuevoPuntoVentaPorCuit = new();
+
+    private string? _cuitUsuario;
+    private string? _nombreUsuario;
 
     private bool _cargando = true;
     private bool _procesando;
@@ -205,8 +221,17 @@
     private string? _mensajeError;
     private ApiKeyResponse? _apiKeyGenerada;
 
+    private bool EstaInscripto => _contribuyentes.Any(c => c.Cuit == _cuitUsuario);
+
     protected override async Task OnInitializedAsync()
     {
+        if (EstadoAutenticacion is not null)
+        {
+            var usuario = (await EstadoAutenticacion).User;
+            _cuitUsuario = usuario.ObtenerCuit();
+            _nombreUsuario = usuario.Identity?.Name;
+        }
+
         await CargarContribuyentesAsync();
     }
 
@@ -232,25 +257,11 @@
         }
     }
 
-    private void CargarEjemploRenaper1()
-    {
-        _nuevo.TipoPersona = "Humana";
-        _nuevo.Cuit = "20401112228";
-        _nuevo.Nombre = "Lucas Matias";
-        _nuevo.Apellido = "Gomez";
-        _nuevo.CondicionIva = 6;
-    }
+    private Task InscribirmeAsync() => RegistrarContribuyenteAsync(_inscripcion, esInscripcion: true);
 
-    private void CargarEjemploRenaper2()
-    {
-        _nuevo.TipoPersona = "Humana";
-        _nuevo.Cuit = "20301234563";
-        _nuevo.Nombre = "Juan Carlos";
-        _nuevo.Apellido = "Pérez";
-        _nuevo.CondicionIva = 1;
-    }
+    private Task RegistrarJuridicaAsync() => RegistrarContribuyenteAsync(_juridica, esInscripcion: false);
 
-    private async Task RegistrarContribuyenteAsync()
+    private async Task RegistrarContribuyenteAsync(RegistrarContribuyenteRequest pedido, bool esInscripcion)
     {
         _mensajeExito = null;
         _mensajeError = null;
@@ -258,15 +269,20 @@
 
         try
         {
-            var (creado, error) = await Api.RegistrarContribuyenteAsync(_nuevo);
+            var (creado, error) = await Api.RegistrarContribuyenteAsync(pedido);
             if (error is not null || creado is null)
             {
                 _mensajeError = error ?? "No se pudo registrar el contribuyente.";
                 return;
             }
 
-            _mensajeExito = $"Contribuyente {creado.NombreORazonSocial} (CUIT {creado.Cuit}) dado de alta correctamente.";
-            _nuevo = new RegistrarContribuyenteRequest { TipoPersona = _nuevo.TipoPersona, CondicionIva = 6 };
+            _mensajeExito = esInscripcion
+                ? $"Quedaste inscripto como {creado.CondicionIvaDescripcion}. Ahora habilitá un punto de venta para facturar."
+                : $"{creado.NombreORazonSocial} (CUIT {creado.Cuit}) dada de alta: tu cuenta quedó como su representante.";
+
+            if (!esInscripcion)
+                _juridica = new RegistrarContribuyenteRequest { TipoPersona = "Juridica", CondicionIva = 1 };
+
             await CargarContribuyentesAsync();
         }
         finally

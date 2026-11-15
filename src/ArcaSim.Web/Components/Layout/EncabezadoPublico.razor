@@ -1,0 +1,34 @@
+@* Encabezado del sitio público (sin sesión): portada, constatación, ingresar y obtener Clave Fiscal. *@
+
+<header class="encabezado">
+    <div class="franja">
+        <div class="container-xl">
+            <i class="bi bi-mortarboard me-1"></i>
+            Simulador académico (UTN · Programación de Aplicaciones Distribuidas). No es el sitio oficial de ARCA.
+        </div>
+    </div>
+
+    <div class="barra">
+        <div class="container-xl d-flex align-items-center justify-content-between gap-3">
+            <a class="marca" href="">
+                <span class="logo"><i class="bi bi-bank2"></i></span>
+                <span class="d-flex flex-column">
+                    <span class="marca-nombre">ArcaSim</span>
+                    <span class="marca-sub">Simulador de ARCA · Factura electrónica</span>
+                </span>
+            </a>
+
+            <nav class="d-flex align-items-center gap-1 gap-md-3">
+                <NavLink class="enlace d-none d-md-inline" href="constatacion">
+                    <i class="bi bi-patch-check me-1"></i> Constatar comprobante
+                </NavLink>
+                <NavLink class="enlace d-none d-md-inline" href="registro">
+                    <i class="bi bi-person-plus me-1"></i> Obtener Clave Fiscal
+                </NavLink>
+                <a class="btn btn-primary btn-ingresar" href="ingresar">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Ingresar
+                </a>
+            </nav>
+        </div>
+    </div>
+</header>

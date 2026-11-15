@@ -34,8 +34,8 @@ factura electrónica:
   CAE de sus facturas. Cualquiera puede además verificar una factura con nuestro servicio de
   constatación.
 - **Consumimos:** otro grupo hace una simulación de **RENAPER** (Registro Nacional de las
-  Personas). La usamos para validar la identidad de las personas humanas que se registran como
-  contribuyentes (ver [docs/renaper.md](docs/renaper.md)).
+  Personas). La usamos para validar la identidad de las personas humanas cuando obtienen su
+  Clave Fiscal en el portal (ver [docs/renaper.md](docs/renaper.md)).
 
 ---
 
@@ -87,8 +87,11 @@ receptor por DNI, primero se valida que la persona exista en el registro de iden
 
 **Mínimo (MVP):**
 
-1. **Contribuyentes y puntos de venta:** alta de emisores. A las personas humanas se les valida la
-   CUIT y, con **RENAPER**, que el nombre y el apellido correspondan al DNI de esa CUIT.
+1. **Clave Fiscal y contribuyentes:** como en ARCA, una persona humana obtiene su Clave Fiscal
+   (se valida la CUIT y, con **RENAPER**, que el nombre y el apellido correspondan al DNI de esa
+   CUIT y que tenga 18 años) e ingresa con CUIT/CUIL y clave. Después se inscribe como
+   contribuyente o da de alta las personas jurídicas que representa, con sus puntos de venta (ver
+   [docs/clave-fiscal.md](docs/clave-fiscal.md)).
 2. **Web service SOAP WSFEv1 igual al de ARCA** (mismo WSDL, namespace, operaciones y nombres de
    campos): `FEDummy` (ya implementado), `FECompUltimoAutorizado`, `FECAESolicitar`,
    `FECompConsultar` y algunos `FEParamGet*` (tablas de tipos de comprobante, IVA, etc.).
@@ -101,8 +104,9 @@ receptor por DNI, primero se valida que la persona exista en el registro de iden
    los errores, con los mismos códigos que ARCA.
 5. **Consultas:** último número autorizado y datos de un comprobante emitido.
 6. **Constatación pública:** verificar un comprobante por sus datos o por su **código QR**.
-7. **Portal web:** alta de contribuyentes, generación de la API key, emitir comprobantes a mano,
-   listarlos y constatarlos.
+7. **Portal web:** ingreso con Clave Fiscal, alta de contribuyentes, generación de la API key,
+   emitir comprobantes a mano, listarlos y constatarlos. Cada cuenta solo ve y opera los
+   contribuyentes que representa; la constatación es pública.
 8. **Facilidades para los otros grupos:**
    - Valores por defecto para los campos opcionales (moneda `PES`, cotización 1, fecha de hoy).
    - Un ejemplo de "pedido mínimo" documentado.
@@ -158,7 +162,8 @@ flowchart LR
 
 ### Cómo se integra otro grupo
 
-1. En el **portal**, dar de alta su contribuyente (CUIT ficticia) y un punto de venta.
+1. En el **portal**, obtener la Clave Fiscal e ingresar. Después, inscribirse como contribuyente
+   (o dar de alta la persona jurídica que factura) y habilitar un punto de venta.
 2. En el portal, **generar la API key** de ese contribuyente y guardarla en la configuración de su
    sistema. Es un secreto: se usa desde su **backend**, nunca desde el navegador.
 3. Llamar a `FECompUltimoAutorizado` para saber el próximo número de comprobante.
@@ -284,17 +289,26 @@ salvo `FEDummy` reciben el objeto `Auth` con la API key.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/estado` | Estado del servicio (**implementado**) |
-| POST | `/api/contribuyentes` | Alta de contribuyente (persona humana validada con RENAPER) |
+| POST | `/api/cuenta/registro` | Obtener la Clave Fiscal: persona humana validada con RENAPER (público) |
+| POST | `/api/cuenta/login` | Ingresar con CUIT/CUIL y clave → JWT (público) |
+| GET | `/api/cuenta` | Datos de la cuenta con la que se ingresó |
+| GET | `/api/contribuyentes` | Contribuyentes que representa la cuenta |
+| POST | `/api/contribuyentes` | Inscribirse (persona humana) o dar de alta una persona jurídica representada |
 | POST | `/api/contribuyentes/{cuit}/puntos-venta` | Alta de punto de venta |
-| POST | `/api/contribuyentes/{cuit}/api-key` | Generar o regenerar la API key (se muestra una sola vez) |
+| POST | `/api/contribuyentes/{cuit}/api-key` | Generar o regenerar la API key del SOAP (se muestra una sola vez; la anterior queda revocada) |
 | GET | `/api/comprobantes?cuit=` | Listar comprobantes de un emisor |
 | POST | `/api/comprobantes` | Emisión manual desde el portal → CAE |
 | POST | `/api/constatacion` | Verificar un comprobante (público) |
+
+Salvo las marcadas como públicas, todas piden el JWT del ingreso (`Authorization: Bearer`) y
+responden 403 si la cuenta no representa al CUIT. Detalle en [docs/clave-fiscal.md](docs/clave-fiscal.md).
 
 ### Modelo de datos inicial (propuesto)
 
 | Tabla | Contenido principal |
 |---|---|
+| `Usuarios` | Cuentas de Clave Fiscal: CUIT/CUIL, nombre y apellido validados con RENAPER, email, **hash** de la clave, intentos fallidos y bloqueo |
+| `Representaciones` | Qué contribuyentes puede operar cada cuenta |
 | `Contribuyentes` | CUIT, nombre o razón social, tipo de persona, condición frente al IVA |
 | `ApiKeys` | CUIT, **hash** de la API key (nunca la clave en texto plano), fecha de creación, revocada sí/no |
 | `PuntosVenta` | CUIT, número, habilitado |
@@ -345,6 +359,14 @@ las dos opciones vienen apagadas. Los datos se cargan una sola vez:
 | `30712345671` | Comercio Demo S.A. (jurídica) | Responsable Inscripto | 1 y 2 (el 3 está deshabilitado) | Factura A N° 1 y Factura B N° 1, en el punto de venta 1 |
 | `27287654311` | María Ejemplo (humana) | Monotributista | 1 | Factura C N° 1 (servicios) |
 | `30709998885` | Fundación Demo (jurídica) | Exento | 1 | — |
+
+Cuentas de Clave Fiscal para ingresar al portal (no pasan por RENAPER). Las dos tienen la clave
+**`ArcaSim2026`**:
+
+| CUIT/CUIL | Cuenta | Representa a |
+|---|---|---|
+| `27287654311` | María Ejemplo | Ella misma |
+| `20255556666` | Pablo Demo | Comercio Demo S.A. y Fundación Demo |
 
 Para empezar de cero: `docker compose down -v` (borra el volumen con los datos).
 

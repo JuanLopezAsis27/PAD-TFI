@@ -23,6 +23,13 @@ public class AppDbContext(
     public DbSet<Comprobante> Comprobantes =>
         Set<Comprobante>();
 
+    // Cuentas de Clave Fiscal del portal y los contribuyentes que representa cada una.
+    public DbSet<Usuario> Usuarios =>
+        Set<Usuario>();
+
+    public DbSet<Representacion> Representaciones =>
+        Set<Representacion>();
+
     // Seguridad SOAP del Rol 2.
     public DbSet<ApiKeySoap> ApiKeysSoap =>
         Set<ApiKeySoap>();

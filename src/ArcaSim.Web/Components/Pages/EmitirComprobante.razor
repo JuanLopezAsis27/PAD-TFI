@@ -1,4 +1,5 @@
 @page "/emitir"
+@attribute [Authorize]
 @rendermode InteractiveServer
 @inject ArcaSimApiCliente Api
 
@@ -50,6 +51,14 @@
             </ul>
         </div>
     }
+}
+
+@if (_cargado && _contribuyentes.Count == 0)
+{
+    <div class="alert alert-info">
+        Para emitir comprobantes primero tenés que representar a un contribuyente con un punto de venta:
+        <a href="contribuyentes" class="alert-link">inscribite o da de alta una persona jurídica</a>.
+    </div>
 }
 
 <div class="card shadow-sm">
@@ -292,6 +301,7 @@
     private DateTime _fechaServicioHasta = DateTime.Today;
     private DateTime _fechaVencimientoPago = DateTime.Today.AddDays(10);
 
+    private bool _cargado;
     private bool _enviando;
     private string? _errorGeneral;
     private ComprobanteResponse? _resultado;
@@ -303,6 +313,7 @@
     protected override async Task OnInitializedAsync()
     {
         _contribuyentes = await Api.ListarContribuyentesAsync();
+        _cargado = true;
         if (_contribuyentes.Count > 0)
         {
             var inicial = !string.IsNullOrWhiteSpace(CuitQuery)

@@ -1,34 +1,51 @@
+using ArcaSim.Api.Autenticacion;
 using ArcaSim.Aplicacion.Servicios;
 using ArcaSim.Contratos.Requests;
 using ArcaSim.Contratos.Responses;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
 using ArcaSim.Infraestructura.Persistencia;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArcaSim.Api.Controllers;
 
+/// <summary>
+/// Comprobantes de los contribuyentes que representa la cuenta con la que se ingresó.
+/// </summary>
 [ApiController]
+[Authorize]
 [Route("api/comprobantes")]
 public class ComprobantesController(
     ComprobanteServicio comprobanteServicio,
+    ContribuyenteServicio contribuyenteServicio,
     AppDbContext db) : ControllerBase
 {
     /// <summary>
-    /// Lista los comprobantes emitidos por un contribuyente (?cuit=...).
+    /// Lista los comprobantes emitidos por un contribuyente (?cuit=...) o, sin cuit, los de todos los
+    /// contribuyentes que representa la cuenta.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<ComprobanteResponse>>> ListarPorCuit(
         [FromQuery] string? cuit,
         CancellationToken cancellationToken)
     {
+        var cuitUsuario = User.ObtenerCuit();
         var query = db.Comprobantes.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(cuit))
         {
             var cuitLimpio = cuit.Trim();
+            if (!contribuyenteServicio.Representa(cuitUsuario, cuitLimpio))
+                return this.NoRepresenta(cuitLimpio);
+
             query = query.Where(c => c.CUITEmisor == cuitLimpio);
+        }
+        else
+        {
+            query = query.Where(c =>
+                db.Representaciones.Any(r => r.CuitUsuario == cuitUsuario && r.CuitRepresentado == c.CUITEmisor));
         }
 
         var comprobantes = await query
@@ -51,8 +68,12 @@ public class ComprobantesController(
         int tipo,
         long numero)
     {
+        cuit = cuit.Trim();
+        if (!contribuyenteServicio.Representa(User.ObtenerCuit(), cuit))
+            return this.NoRepresenta(cuit);
+
         var comprobante = comprobanteServicio.Consultar(
-            cuit.Trim(),
+            cuit,
             puntoVenta,
             (TipoComprobante)tipo,
             numero);
@@ -75,14 +96,18 @@ public class ComprobantesController(
         if (string.IsNullOrWhiteSpace(cuit))
             return BadRequest(new { mensaje = "El parámetro 'cuit' es obligatorio." });
 
+        cuit = cuit.Trim();
+        if (!contribuyenteServicio.Representa(User.ObtenerCuit(), cuit))
+            return this.NoRepresenta(cuit);
+
         var ultimo = comprobanteServicio.ConsultarUltimoNumeroAutorizado(
-            cuit.Trim(),
+            cuit,
             puntoVenta,
             (TipoComprobante)tipo);
 
         return Ok(new
         {
-            cuit = cuit.Trim(),
+            cuit,
             puntoVenta,
             tipoComprobante = tipo,
             ultimoNumeroAutorizado = ultimo,
@@ -100,6 +125,12 @@ public class ComprobantesController(
             return BadRequest(new { mensaje = "Los datos del comprobante son obligatorios." });
 
         var cuitEmisor = request.CuitEmisor?.Trim() ?? string.Empty;
+        if (cuitEmisor.Length == 0)
+            return BadRequest(new { mensaje = "El CUIT del emisor es obligatorio." });
+
+        if (!contribuyenteServicio.Representa(User.ObtenerCuit(), cuitEmisor))
+            return this.NoRepresenta(cuitEmisor);
+
         var tipo = (TipoComprobante)request.TipoComprobante;
         var fechaHoy = DateTime.Today;
         var fechaEmision = request.Fecha?.Date ?? fechaHoy;

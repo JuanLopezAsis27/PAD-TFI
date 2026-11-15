@@ -4,29 +4,64 @@
 GET {{ArcaSim.Api_HostAddress}}/api/estado
 Accept: application/json
 
-### REST: listar contribuyentes
-GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes
-Accept: application/json
-
-### REST: obtener contribuyente por CUIT (Comercio Demo S.A.)
-GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671
-Accept: application/json
-
-### REST: alta de contribuyente persona humana (validada con RENAPER simulado)
-POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes
+### Clave Fiscal: obtenerla (valida nombre, apellido y edad con el RENAPER simulado)
+POST {{ArcaSim.Api_HostAddress}}/api/cuenta/registro
 Content-Type: application/json
 
 {
   "cuit": "20401112228",
-  "tipoPersona": "Humana",
   "nombre": "Lucas Matias",
   "apellido": "Gomez",
-  "condicionIva": 6
+  "email": "lucas@example.com",
+  "clave": "Factura2026"
+}
+
+### Clave Fiscal: ingresar con la cuenta de prueba que representa a Comercio Demo S.A.
+# Los pedidos de abajo usan el token de esta respuesta: ejecutar este primero.
+# @name login
+POST {{ArcaSim.Api_HostAddress}}/api/cuenta/login
+Content-Type: application/json
+
+{
+  "cuit": "20255556666",
+  "clave": "ArcaSim2026"
+}
+
+### Clave Fiscal: datos de la cuenta con la que se ingresó
+GET {{ArcaSim.Api_HostAddress}}/api/cuenta
+Authorization: Bearer {{login.response.body.$.token}}
+
+### REST: listar los contribuyentes que representa la cuenta
+GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes
+Accept: application/json
+Authorization: Bearer {{login.response.body.$.token}}
+
+### REST: obtener contribuyente por CUIT (Comercio Demo S.A.)
+GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671
+Accept: application/json
+Authorization: Bearer {{login.response.body.$.token}}
+
+### REST: obtener un contribuyente que la cuenta no representa (403)
+GET {{ArcaSim.Api_HostAddress}}/api/contribuyentes/27287654311
+Accept: application/json
+Authorization: Bearer {{login.response.body.$.token}}
+
+### REST: alta de persona jurídica representada por la cuenta
+POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.$.token}}
+
+{
+  "tipoPersona": "Juridica",
+  "cuit": "30500010912",
+  "razonSocial": "Nueva Empresa S.A.",
+  "condicionIva": 1
 }
 
 ### REST: alta de punto de venta
 POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671/puntos-venta
 Content-Type: application/json
+Authorization: Bearer {{login.response.body.$.token}}
 
 {
   "numero": 4,
@@ -36,14 +71,17 @@ Content-Type: application/json
 ### REST: generar API Key para un contribuyente
 POST {{ArcaSim.Api_HostAddress}}/api/contribuyentes/30712345671/api-key
 Accept: application/json
+Authorization: Bearer {{login.response.body.$.token}}
 
 ### REST: listar comprobantes de un emisor
 GET {{ArcaSim.Api_HostAddress}}/api/comprobantes?cuit=30712345671
 Accept: application/json
+Authorization: Bearer {{login.response.body.$.token}}
 
 ### REST: emitir comprobante manual (Factura B a Consumidor Final)
 POST {{ArcaSim.Api_HostAddress}}/api/comprobantes
 Content-Type: application/json
+Authorization: Bearer {{login.response.body.$.token}}
 
 {
   "cuitEmisor": "30712345671",

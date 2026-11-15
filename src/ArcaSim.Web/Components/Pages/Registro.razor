@@ -1,0 +1,224 @@
+@page "/registro"
+@layout LayoutAcceso
+@rendermode InteractiveServer
+@inject ArcaSimApiCliente Api
+@inject NavigationManager Navigation
+
+<PageTitle>Obtener Clave Fiscal · ArcaSim</PageTitle>
+
+<div class="card shadow-sm tarjeta-acceso tarjeta-acceso-ancha">
+    <div class="card-body p-4">
+        <h1 class="h4 mb-1">Obtené tu Clave Fiscal</h1>
+        <p class="text-muted small mb-4">
+            La Clave Fiscal es personal: la obtiene una persona humana con su CUIT/CUIL. Con ella después te
+            inscribís como contribuyente o operás las personas jurídicas que representás.
+        </p>
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger small" role="alert">@_error</div>
+        }
+
+        <EditForm Model="_modelo" OnSubmit="RegistrarAsync">
+            <!-- 1. Identidad -->
+            <h2 class="h6 text-uppercase text-muted border-bottom pb-2 mb-3">1. Validá tu identidad</h2>
+
+            <div class="mb-3">
+                <label for="cuit" class="form-label fw-semibold">CUIT/CUIL</label>
+                <InputText id="cuit" class="form-control font-monospace" @bind-Value="_modelo.Cuit"
+                           inputmode="numeric" maxlength="13" placeholder="Ej: 20401112228" autocomplete="username" />
+                <div class="form-text">
+                    11 dígitos: prefijo (20, 23, 24 o 27), tu DNI de 8 dígitos (con ceros adelante si tiene 7) y el dígito
+                    verificador. Si el último no corresponde, te decimos cuál es.
+                </div>
+            </div>
+
+            <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                    <label for="nombre" class="form-label fw-semibold">Nombre(s)</label>
+                    <InputText id="nombre" class="form-control" @bind-Value="_modelo.Nombre" autocomplete="given-name" />
+                </div>
+                <div class="col-md-6">
+                    <label for="apellido" class="form-label fw-semibold">Apellido(s)</label>
+                    <InputText id="apellido" class="form-control" @bind-Value="_modelo.Apellido" autocomplete="family-name" />
+                </div>
+            </div>
+
+            <div class="alert alert-info py-2 small mb-4">
+                <i class="bi bi-person-vcard me-1"></i>
+                Escribilos <strong>tal como figuran en tu DNI</strong>: los validamos con <strong>RENAPER</strong>.
+                Tenés que tener al menos 18 años.
+                <details class="mt-2">
+                    <summary class="fw-semibold" style="cursor:pointer">Personas de prueba (RENAPER simulado)</summary>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick='() => CargarEjemplo("20401112228", "Lucas Matias", "Gomez")'>
+                            Lucas Gomez (válida)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick='() => CargarEjemplo("20301234563", "Juan Carlos", "Pérez")'>
+                            Juan Carlos Pérez (válida)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick='() => CargarEjemplo("27359876543", "Ana", "Fernández")'>
+                            Ana Fernández (nombre incompleto)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick='() => CargarEjemplo("23501112224", "Sofía", "Menor")'>
+                            Sofía Menor (menor de edad)
+                        </button>
+                    </div>
+                    <div class="mt-1 text-muted">Solo funcionan con el RENAPER simulado (modo <code>Stub</code>). Ver <code>docs/renaper.md</code>.</div>
+                </details>
+            </div>
+
+            <!-- 2. Contacto -->
+            <h2 class="h6 text-uppercase text-muted border-bottom pb-2 mb-3">2. Datos de contacto</h2>
+
+            <div class="mb-4">
+                <label for="email" class="form-label fw-semibold">Correo electrónico</label>
+                <InputText id="email" type="email" class="form-control" @bind-Value="_modelo.Email" autocomplete="email" />
+            </div>
+
+            <!-- 3. Clave -->
+            <h2 class="h6 text-uppercase text-muted border-bottom pb-2 mb-3">3. Creá tu clave</h2>
+
+            <div class="row g-2 mb-2">
+                <div class="col-md-6">
+                    <label for="clave" class="form-label fw-semibold">Clave</label>
+                    <input id="clave" type="password" class="form-control" @bind="_modelo.Clave" @bind:event="oninput"
+                           autocomplete="new-password" maxlength="64" />
+                </div>
+                <div class="col-md-6">
+                    <label for="confirmacion" class="form-label fw-semibold">Repetí la clave</label>
+                    <input id="confirmacion" type="password" class="form-control" @bind="_modelo.Confirmacion" @bind:event="oninput"
+                           autocomplete="new-password" maxlength="64" />
+                </div>
+            </div>
+
+            <ul class="list-unstyled small mb-4">
+                @foreach (var requisito in Requisitos)
+                {
+                    bool cumple = requisito.Cumple(_modelo.Clave, CuitNormalizada);
+                    <li class="@(cumple ? "text-success" : "text-muted")">
+                        <i class="bi @(cumple ? "bi-check-circle-fill" : "bi-circle") me-1"></i> @requisito.Texto
+                    </li>
+                }
+                <li class="@(ClavesCoinciden ? "text-success" : "text-muted")">
+                    <i class="bi @(ClavesCoinciden ? "bi-check-circle-fill" : "bi-circle") me-1"></i> Las dos claves coinciden.
+                </li>
+            </ul>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100" disabled="@_enviando">
+                @(_enviando ? "Validando con RENAPER..." : "Obtener Clave Fiscal")
+            </button>
+        </EditForm>
+
+        <hr class="my-4" />
+        <p class="small mb-0">¿Ya tenés Clave Fiscal? <a href="ingresar" class="fw-semibold">Ingresá</a>.</p>
+    </div>
+</div>
+
+@code {
+    // Mismos requisitos que valida la API (ValidadorClaveFiscal, en el Dominio): acá solo se muestran en vivo.
+    private sealed record Requisito(string Texto, Func<string, string?, bool> Cumple);
+
+    private static readonly Requisito[] Requisitos =
+    [
+        new("Entre 10 y 64 caracteres.", (c, _) => c.Length is >= 10 and <= 64),
+        new("Al menos 2 números.", (c, _) => c.Count(char.IsAsciiDigit) >= 2),
+        new("Al menos 4 letras.", (c, _) => c.Count(char.IsAsciiLetter) >= 4),
+        new("Al menos 1 mayúscula y 1 minúscula.", (c, _) => c.Any(char.IsAsciiLetterUpper) && c.Any(char.IsAsciiLetterLower)),
+        new("Sin espacios.", (c, _) => c.Length > 0 && !c.Any(char.IsWhiteSpace)),
+        new("Que no contenga tu CUIT/CUIL ni tu DNI.", (c, cuit) => c.Length > 0 && !ContieneDatosPersonales(c, cuit))
+    ];
+
+    private readonly Modelo _modelo = new();
+    private bool _enviando;
+    private string? _error;
+
+    private string CuitNormalizada => (_modelo.Cuit ?? string.Empty).Replace("-", string.Empty).Trim();
+
+    private bool ClavesCoinciden => _modelo.Clave.Length > 0 && _modelo.Clave == _modelo.Confirmacion;
+
+    private void CargarEjemplo(string cuit, string nombre, string apellido)
+    {
+        _modelo.Cuit = cuit;
+        _modelo.Nombre = nombre;
+        _modelo.Apellido = apellido;
+        _modelo.Email = $"{nombre.Split(' ')[0].ToLowerInvariant()}.prueba@example.com";
+        _error = null;
+    }
+
+    private async Task RegistrarAsync()
+    {
+        _error = ValidarLocalmente();
+        if (_error is not null)
+            return;
+
+        _enviando = true;
+        try
+        {
+            var (creada, error) = await Api.RegistrarCuentaAsync(new RegistrarCuentaRequest
+            {
+                Cuit = CuitNormalizada,
+                Nombre = _modelo.Nombre.Trim(),
+                Apellido = _modelo.Apellido.Trim(),
+                Email = _modelo.Email.Trim(),
+                Clave = _modelo.Clave
+            });
+
+            if (creada is null)
+            {
+                _error = error ?? "No se pudo crear la Clave Fiscal.";
+                return;
+            }
+
+            Navigation.NavigateTo($"ingresar?cuit={Uri.EscapeDataString(creada.Cuit)}&registrado=true", forceLoad: true);
+        }
+        catch (HttpRequestException)
+        {
+            _error = "No se pudo conectar con ArcaSim.Api. Probá de nuevo en unos minutos.";
+        }
+        finally
+        {
+            _enviando = false;
+        }
+    }
+
+    // Controles rápidos antes de llamar a la API (cada validación en RENAPER consume un crédito).
+    private string? ValidarLocalmente()
+    {
+        if (CuitNormalizada.Length != 11 || !CuitNormalizada.All(char.IsAsciiDigit))
+            return "La CUIT/CUIL tiene que tener 11 dígitos.";
+
+        if (string.IsNullOrWhiteSpace(_modelo.Nombre) || string.IsNullOrWhiteSpace(_modelo.Apellido))
+            return "Completá tu nombre y tu apellido como figuran en el DNI.";
+
+        if (string.IsNullOrWhiteSpace(_modelo.Email))
+            return "Completá tu correo electrónico.";
+
+        if (!Requisitos.All(r => r.Cumple(_modelo.Clave, CuitNormalizada)))
+            return "La clave no cumple todos los requisitos.";
+
+        if (!ClavesCoinciden)
+            return "Las dos claves no coinciden.";
+
+        return null;
+    }
+
+    private static bool ContieneDatosPersonales(string clave, string? cuit)
+    {
+        if (string.IsNullOrEmpty(cuit) || cuit.Length != 11 || !cuit.All(char.IsAsciiDigit))
+            return false;
+
+        string dni = cuit.Substring(2, 8).TrimStart('0');
+        return clave.Contains(cuit, StringComparison.Ordinal) || (dni.Length > 0 && clave.Contains(dni, StringComparison.Ordinal));
+    }
+
+    private sealed class Modelo
+    {
+        public string Cuit { get; set; } = string.Empty;
+        public string Nombre { get; set; } = string.Empty;
+        public string Apellido { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Clave { get; set; } = string.Empty;
+        public string Confirmacion { get; set; } = string.Empty;
+    }
+}

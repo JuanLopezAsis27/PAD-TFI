@@ -20,6 +20,16 @@ a, .btn-link {
     padding-top: 1.1rem;
 }
 
+/* Tarjetas de las pantallas de acceso (ingresar / obtener Clave Fiscal) */
+.tarjeta-acceso {
+    width: 100%;
+    max-width: 440px;
+}
+
+.tarjeta-acceso-ancha {
+    max-width: 640px;
+}
+
 h1:focus {
     outline: none;
 }

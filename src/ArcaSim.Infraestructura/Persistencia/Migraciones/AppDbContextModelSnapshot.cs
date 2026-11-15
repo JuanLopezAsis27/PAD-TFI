@@ -171,6 +171,69 @@ namespace ArcaSim.Infraestructura.Persistencia.Migraciones
                     b.ToTable("PuntosVenta", (string)null);
                 });
 
+            modelBuilder.Entity("ArcaSim.Dominio.Entidades.Representacion", b =>
+                {
+                    b.Property<string>("CuitUsuario")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<string>("CuitRepresentado")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<DateTime>("FechaAlta")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CuitUsuario", "CuitRepresentado");
+
+                    b.HasIndex("CuitRepresentado");
+
+                    b.ToTable("Representaciones", (string)null);
+                });
+
+            modelBuilder.Entity("ArcaSim.Dominio.Entidades.Usuario", b =>
+                {
+                    b.Property<string>("Cuit")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<string>("Apellido")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("BloqueadoHasta")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTime>("FechaAlta")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HashClave")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("IntentosFallidos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UltimoIngreso")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Cuit");
+
+                    b.ToTable("Usuarios", (string)null);
+                });
+
             modelBuilder.Entity("ArcaSim.Infraestructura.Persistencia.Entidades.ApiKeySoap", b =>
                 {
                     b.Property<int>("Id")
@@ -274,6 +337,25 @@ namespace ArcaSim.Infraestructura.Persistencia.Migraciones
                     b.Navigation("Contribuyente");
                 });
 
+            modelBuilder.Entity("ArcaSim.Dominio.Entidades.Representacion", b =>
+                {
+                    b.HasOne("ArcaSim.Dominio.Entidades.Contribuyente", "Representado")
+                        .WithMany()
+                        .HasForeignKey("CuitRepresentado")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ArcaSim.Dominio.Entidades.Usuario", "Usuario")
+                        .WithMany("Representaciones")
+                        .HasForeignKey("CuitUsuario")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Representado");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("ArcaSim.Dominio.Entidades.Contribuyente", b =>
                 {
                     b.Navigation("PuntosVenta");
@@ -282,6 +364,11 @@ namespace ArcaSim.Infraestructura.Persistencia.Migraciones
             modelBuilder.Entity("ArcaSim.Dominio.Entidades.PuntoVenta", b =>
                 {
                     b.Navigation("Comprobantes");
+                });
+
+            modelBuilder.Entity("ArcaSim.Dominio.Entidades.Usuario", b =>
+                {
+                    b.Navigation("Representaciones");
                 });
 #pragma warning restore 612, 618
         }
