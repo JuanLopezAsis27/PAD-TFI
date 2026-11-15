@@ -4,7 +4,7 @@ using System.Xml.Serialization;
 namespace ArcaSim.Api.Soap.Wsfev1.Models;
 
 [XmlRoot(
-    ElementName = "FEAuthRequest",
+    ElementName = "Auth",
     Namespace = IServiceSoap.Ns)]
 [XmlType(
     TypeName = "FEAuthRequest",

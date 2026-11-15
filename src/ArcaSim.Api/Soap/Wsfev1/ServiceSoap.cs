@@ -8,7 +8,7 @@ using System.Globalization;
 
 namespace ArcaSim.Api.Soap.Wsfev1;
 
-public class ServiceSoap : IServiceSoap
+public partial class ServiceSoap : IServiceSoap
 {
     private readonly ComprobanteServicio _comprobanteServicio;
     private readonly IValidadorApiKey _validadorApiKey;
@@ -202,14 +202,64 @@ public class ServiceSoap : IServiceSoap
                 "Faltan datos de autorización.");
         }
 
+        if (!long.TryParse(
+            comprobante.NumeroDocumentoReceptor,
+            NumberStyles.None,
+            CultureInfo.InvariantCulture,
+            out long documentoReceptor))
+        {
+            return ErrorConsulta(
+                respuesta, 401,
+                "El documento del receptor almacenado no es válido.");
+        }
+
         respuesta.ResultGet = new FECompConsultaResult
         {
+            Concepto = (int)comprobante.Concepto,
+            DocTipo = (int)comprobante.TipoDocumentoReceptor,
+            DocNro = documentoReceptor,
+            CbteDesde = comprobante.Numero,
+            CbteHasta = comprobante.Numero,
+
+            CbteFch = comprobante.Fecha.ToString(
+                "yyyyMMdd", CultureInfo.InvariantCulture),
+
+            ImpTotal = (double)comprobante.ImporteTotal,
+            ImpTotConc = (double)comprobante.ImporteNoGravado,
+            ImpNeto = (double)comprobante.ImporteNeto,
+            ImpOpEx = (double)comprobante.ImporteExento,
+            ImpTrib = (double)comprobante.ImporteTributos,
+            ImpIVA = (double)comprobante.ImporteIVA,
+
+            FchServDesde =
+                comprobante.FechaServicioDesde?.ToString(
+                    "yyyyMMdd", CultureInfo.InvariantCulture),
+
+            FchServHasta =
+                comprobante.FechaServicioHasta?.ToString(
+                    "yyyyMMdd", CultureInfo.InvariantCulture),
+
+            FchVtoPago =
+                comprobante.FechaVencimientoPago?.ToString(
+                    "yyyyMMdd", CultureInfo.InvariantCulture),
+
+            MonId = comprobante.Moneda,
+            MonCotiz = (double)comprobante.Cotizacion,
+
             Resultado = "A",
             CodAutorizacion = comprobante.CAE,
             EmisionTipo = "CAE",
-            FchVto = comprobante.FechaVencimientoCAE.Value
-                .ToString("yyyyMMdd", CultureInfo.InvariantCulture),
-            FchProceso = string.Empty,
+
+            FchVto =
+                comprobante.FechaVencimientoCAE.Value.ToString(
+                    "yyyyMMdd", CultureInfo.InvariantCulture),
+
+            // La entidad todavía no expone la fecha real
+            // de procesamiento/autorización.
+            // Se omite el elemento si el modelo SOAP tiene
+            // ShouldSerializeFchProceso().
+            FchProceso = null,
+
             PtoVta = comprobante.PuntoVentaNumero,
             CbteTipo = (int)comprobante.Tipo
         };
@@ -343,7 +393,7 @@ public class ServiceSoap : IServiceSoap
         }
 
         // =================================================
-        // MAPEO DE CÓDIGOS OFICIALES DE CONDICIÓN IVA
+        // MAPEO DE CÓDIGOS DE CONDICIÓN IVA
         // =================================================
 
         CondicionIva? condicionReceptor = null;
@@ -420,8 +470,9 @@ public class ServiceSoap : IServiceSoap
             TipoDocumentoReceptor =
                 (TipoDocumento)detalle.DocTipo,
 
-            NumeroDocumentoReceptor = detalle.DocNro.ToString(
-                CultureInfo.InvariantCulture),
+            NumeroDocumentoReceptor =
+                detalle.DocNro.ToString(
+                    CultureInfo.InvariantCulture),
 
             CondicionIvaReceptor = condicionReceptor,
 
@@ -447,8 +498,11 @@ public class ServiceSoap : IServiceSoap
             PtoVta = cabecera.PtoVta,
             CbteTipo = cabecera.CbteTipo,
             CantReg = 1,
+
             FchProceso = DateTime.Now.ToString(
-                "yyyyMMddHHmmss", CultureInfo.InvariantCulture),
+                "yyyyMMddHHmmss",
+                CultureInfo.InvariantCulture),
+
             Resultado = "R",
             Reproceso = "N"
         };
@@ -468,12 +522,13 @@ public class ServiceSoap : IServiceSoap
                 CrearDetalleRespuesta(detalle, "R")
             };
 
-            respuesta.Errors = validacion.Errores.Select(error =>
-                new SoapError
+            respuesta.Errors = validacion.Errores
+                .Select(error => new SoapError
                 {
                     Code = 400,
                     Msg = $"{error.codigo}: {error.mensaje}"
-                }).ToList();
+                })
+                .ToList();
 
             return respuesta;
         }
@@ -506,9 +561,11 @@ public class ServiceSoap : IServiceSoap
             CrearDetalleRespuesta(detalle, "A");
 
         detalleRespuesta.CAE = autorizado.CAE;
+
         detalleRespuesta.CAEFchVto =
             autorizado.FechaVencimientoCAE.Value.ToString(
-                "yyyyMMdd", CultureInfo.InvariantCulture);
+                "yyyyMMdd",
+                CultureInfo.InvariantCulture);
 
         respuesta.FeDetResp = new List<FECAEDetResponse>
         {
@@ -531,7 +588,11 @@ public class ServiceSoap : IServiceSoap
 
         if (errorAuth is not null)
         {
-            respuesta.Errors = new List<SoapError> { errorAuth };
+            respuesta.Errors = new List<SoapError>
+            {
+                errorAuth
+            };
+
             return respuesta;
         }
 
@@ -561,7 +622,11 @@ public class ServiceSoap : IServiceSoap
 
         if (errorAuth is not null)
         {
-            respuesta.Errors = new List<SoapError> { errorAuth };
+            respuesta.Errors = new List<SoapError>
+            {
+                errorAuth
+            };
+
             return respuesta;
         }
 
@@ -571,10 +636,13 @@ public class ServiceSoap : IServiceSoap
             {
                 Id = ((int)tipo).ToString(
                     CultureInfo.InvariantCulture),
+
                 Desc = ObtenerDescripcionIva(tipo)
             })
             .OrderBy(item =>
-                int.Parse(item.Id, CultureInfo.InvariantCulture))
+                int.Parse(
+                    item.Id,
+                    CultureInfo.InvariantCulture))
             .ToList();
 
         return respuesta;
@@ -604,7 +672,8 @@ public class ServiceSoap : IServiceSoap
             return respuesta;
         }
 
-        string clase = ClaseCmp?.Trim().ToUpperInvariant()
+        string clase =
+            ClaseCmp?.Trim().ToUpperInvariant()
             ?? string.Empty;
 
         if (clase is not ("" or "A" or "B" or "C" or "M"))
@@ -621,9 +690,8 @@ public class ServiceSoap : IServiceSoap
             return respuesta;
         }
 
-        // Catálogo reducido a condiciones que el dominio
-        // actual puede interpretar. No equivale al catálogo
-        // completo que devuelve ARCA.
+        // Catálogo reducido a las condiciones que
+        // actualmente interpreta el dominio.
 
         var catalogo = new List<FECondicionIvaReceptor>
         {
@@ -701,10 +769,11 @@ public class ServiceSoap : IServiceSoap
     }
 
     // =====================================================
-    // AUXILIARES
+    // MÉTODOS AUXILIARES
     // =====================================================
 
-    private static string ObtenerDescripcionIva(AlicuotaIva tipo)
+    private static string ObtenerDescripcionIva(
+        AlicuotaIva tipo)
     {
         return tipo switch
         {
@@ -725,7 +794,9 @@ public class ServiceSoap : IServiceSoap
         resultado = 0;
 
         if (!double.IsFinite(valor))
+        {
             return false;
+        }
 
         try
         {
@@ -757,10 +828,14 @@ public class ServiceSoap : IServiceSoap
         fecha = null;
 
         if (string.IsNullOrWhiteSpace(valor))
+        {
             return true;
+        }
 
         if (!TryFecha(valor, out var fechaConvertida))
+        {
             return false;
+        }
 
         fecha = fechaConvertida;
         return true;
@@ -797,7 +872,9 @@ public class ServiceSoap : IServiceSoap
         };
 
         if (respuesta.FeCabResp is not null)
+        {
             respuesta.FeCabResp.Resultado = "R";
+        }
 
         return respuesta;
     }

@@ -54,7 +54,9 @@ public sealed class ModelosSoapTests
         var xml = Serializar(auth);
         var raiz = Assert.IsType<XElement>(xml.Root);
 
-        Assert.Equal(Ns + "FEAuthRequest", raiz.Name);
+        // El elemento del XML se llama Auth.
+        // El tipo C# continúa siendo FEAuthRequest.
+        Assert.Equal(Ns + "Auth", raiz.Name);
 
         Assert.Equal(
             "API_KEY_PRUEBA",
