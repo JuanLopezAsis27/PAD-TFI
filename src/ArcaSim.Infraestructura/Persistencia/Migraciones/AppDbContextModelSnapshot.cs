@@ -171,6 +171,53 @@ namespace ArcaSim.Infraestructura.Persistencia.Migraciones
                     b.ToTable("PuntosVenta", (string)null);
                 });
 
+            modelBuilder.Entity("ArcaSim.Infraestructura.Persistencia.Entidades.ApiKeySoap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Cuit")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cuit");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<DateTime?>("FechaRevocacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_revocacion");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash");
+
+                    b.Property<bool>("Revocada")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("revocada");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Cuit")
+                        .HasDatabaseName("ix_api_keys_soap_cuit");
+
+                    b.HasIndex("Hash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_api_keys_soap_hash");
+
+                    b.ToTable("api_keys_soap", (string)null);
+                });
+
             modelBuilder.Entity("ArcaSim.Dominio.Entidades.Comprobante", b =>
                 {
                     b.HasOne("ArcaSim.Dominio.Entidades.PuntoVenta", "PuntoVenta")
