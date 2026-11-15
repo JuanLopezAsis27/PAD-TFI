@@ -9,6 +9,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <!-- El SDK baja el paquete con _framework/blazor.web.js solo si ve archivos .razor al restaurar. El
+         Dockerfile restaura con los .csproj solos (antes de copiar el código), así que hay que pedirlo
+         explícitamente: sin esto la imagen sale sin el script y el portal no es interactivo. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 
 </Project>
