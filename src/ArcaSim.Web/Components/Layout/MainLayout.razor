@@ -1,16 +1,38 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@*
+    Con sesión: el portal con el menú lateral. Sin sesión: el sitio público, sin menú lateral, como la
+    portada de ARCA (encabezado con "Ingresar", contenido y pie).
+*@
 
-    <main>
-        <article class="content px-4 pt-4 pb-5">
-            @Body
-        </article>
-    </main>
-</div>
+<AuthorizeView>
+    <Authorized>
+        <div class="page">
+            <div class="sidebar">
+                <NavMenu />
+            </div>
+
+            <main>
+                <article class="content px-4 pt-4 pb-5">
+                    @Body
+                </article>
+            </main>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="publico">
+            <EncabezadoPublico />
+
+            <main class="publico-contenido">
+                <div class="container-xl py-4">
+                    @Body
+                </div>
+            </main>
+
+            <PiePublico />
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 <div id="blazor-error-ui" data-nosnippet>
     Ocurrió un error inesperado en la aplicación.

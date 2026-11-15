@@ -1,0 +1,33 @@
+.pie {
+    background-color: #0b2239;
+    color: #b8c7d6;
+    padding: 2rem 0;
+    margin-top: auto;
+}
+
+.pie-marca {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 0.35rem;
+}
+
+.pie-titulo {
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+}
+
+.pie a {
+    color: #b8c7d6;
+    text-decoration: none;
+    line-height: 1.9;
+}
+
+    .pie a:hover {
+        color: #fff;
+        text-decoration: underline;
+    }

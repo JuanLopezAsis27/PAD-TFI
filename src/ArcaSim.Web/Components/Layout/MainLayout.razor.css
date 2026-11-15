@@ -4,6 +4,18 @@
     flex-direction: column;
 }
 
+/* Sitio público (sin sesión) */
+.publico {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f4f6f9;
+}
+
+.publico-contenido {
+    flex: 1;
+}
+
 main {
     flex: 1;
 }

@@ -1,34 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Text;
-using ArcaSim.Aplicacion.Excepciones;
-using ArcaSim.Aplicacion.Interfaces;
+﻿using ArcaSim.Aplicacion.Interfaces;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
 using ArcaSim.Dominio.Reglas;
 
 namespace ArcaSim.Aplicacion.Servicios;
 
+/// <summary>
+/// Alta de contribuyentes. Como en ARCA, se hace con la sesión de una cuenta de Clave Fiscal: la persona se
+/// inscribe a sí misma o da de alta una persona jurídica, y queda como quien la representa. La identidad
+/// ya se validó con RENAPER al crear la cuenta (ver <see cref="ClaveFiscalServicio"/>).
+/// </summary>
 public class ContribuyenteServicio
 {
-    /// <summary>Edad mínima para que una persona humana se inscriba como contribuyente.</summary>
-    public const int EdadMinimaPersonaHumana = 18;
-
-    private static readonly string[] PrefijosPersonaHumana = ["20", "23", "24", "27"];
+    private static readonly string[] PrefijosPersonaJuridica = ["30", "33", "34"];
 
     private readonly IContribuyenteRepositorio _repositorio;
-    private readonly IRenaperCliente _renaper;
+    private readonly IUsuarioRepositorio _usuarios;
 
-    public ContribuyenteServicio(IContribuyenteRepositorio repositorio, IRenaperCliente renaper)
+    public ContribuyenteServicio(IContribuyenteRepositorio repositorio, IUsuarioRepositorio usuarios)
     {
         _repositorio = repositorio;
-        _renaper = renaper;
+        _usuarios = usuarios;
     }
 
     /// <summary>
-    /// Alta de una persona jurídica. Las personas humanas se registran con
-    /// <see cref="RegistrarPersonaHumanaAsync"/>, que valida su identidad con RENAPER.
+    /// Alta de una persona jurídica sin representante (la usan los datos de prueba). Desde el portal se usa
+    /// <see cref="RegistrarPersonaJuridica"/>, que deja asociada la cuenta que la da de alta.
     /// </summary>
     public void Registrar(Contribuyente contribuyente)
     {
@@ -37,72 +34,100 @@ public class ContribuyenteServicio
         if (contribuyente.TipoPersona == TipoPersona.Humana)
         {
             throw new InvalidOperationException(
-                "Las personas humanas se registran con RegistrarPersonaHumanaAsync, que valida su identidad con RENAPER.");
+                "Las personas humanas se inscriben con InscribirPersonaHumana, desde su cuenta de Clave Fiscal.");
         }
 
         ValidarYAgregar(contribuyente);
     }
 
     /// <summary>
-    /// Alta de una persona humana. Su CUIT es prefijo + DNI + dígito verificador: se extrae el DNI y se
-    /// valida con RENAPER que el nombre y el apellido coincidan y que cumpla la edad mínima.
+    /// Inscripción de la persona dueña de la cuenta, con el CUIT y el nombre que validó RENAPER al crearla
+    /// (no se vuelve a consultar). Si su CUIT ya estaba dado de alta sin cuenta asociada, se le asocia.
     /// </summary>
-    /// <exception cref="ArgumentException">Datos inválidos (no se consulta a RENAPER).</exception>
-    /// <exception cref="InvalidOperationException">El CUIT ya existe o RENAPER no validó a la persona.</exception>
-    /// <exception cref="RenaperNoDisponibleException">RENAPER no dio una respuesta válida.</exception>
-    public async Task<Contribuyente> RegistrarPersonaHumanaAsync(string cuit, string nombre, string apellido,
-        CondicionIva condicionIva, CancellationToken cancellationToken = default)
+    /// <exception cref="ArgumentException">La condición de IVA no es válida.</exception>
+    /// <exception cref="InvalidOperationException">La cuenta no existe o ya está inscripta.</exception>
+    public Contribuyente InscribirPersonaHumana(string cuitUsuario, CondicionIva condicionIva)
     {
-        if (!ValidadorCUIT.EsValido(cuit))
-            throw new ArgumentException("El CUIT del contribuyente no es válido.");
-
-        if (!PrefijosPersonaHumana.Contains(cuit[..2]))
-            throw new ArgumentException("El CUIT no es de una persona humana: debe empezar con 20, 23, 24 o 27.");
-
-        if (string.IsNullOrWhiteSpace(nombre) || string.IsNullOrWhiteSpace(apellido))
-            throw new ArgumentException("El nombre y el apellido son obligatorios.");
+        var usuario = ObtenerUsuario(cuitUsuario);
 
         if (!Enum.IsDefined(condicionIva))
             throw new ArgumentException("La condición de IVA no es válida.");
 
-        // Se controla antes de consultar a RENAPER, porque cada consulta consume un crédito.
-        if (_repositorio.ObtenerPorCUIT(cuit) is not null)
-            throw new InvalidOperationException("Ya existe un contribuyente registrado con ese CUIT.");
-
-        int dni = int.Parse(cuit.AsSpan(2, 8), CultureInfo.InvariantCulture);
-        nombre = nombre.Trim();
-        apellido = apellido.Trim();
-
-        var resultado = await _renaper.ValidarPersonaAsync(dni, nombre, apellido, EdadMinimaPersonaHumana,
-            cancellationToken);
-
-        if (!resultado.DatosCoinciden)
+        var existente = _repositorio.ObtenerPorCUIT(usuario.Cuit);
+        if (existente is not null)
         {
-            throw new InvalidOperationException(
-                $"El nombre y el apellido no coinciden con los que RENAPER tiene para el DNI {dni}.");
-        }
+            if (_usuarios.Representa(usuario.Cuit, existente.CUIT))
+                throw new InvalidOperationException("Ya estás inscripto como contribuyente.");
 
-        if (!resultado.CumpleEdadMinima)
-        {
-            throw new InvalidOperationException(
-                $"La persona no cumple la edad mínima de {EdadMinimaPersonaHumana} años para inscribirse.");
+            AgregarRepresentacion(usuario.Cuit, existente.CUIT);
+            return existente;
         }
 
         var contribuyente = new Contribuyente
         {
-            CUIT = cuit,
-            NombreORazonSocial = $"{apellido}, {nombre}",
+            CUIT = usuario.Cuit,
+            NombreORazonSocial = usuario.NombreCompleto,
             TipoPersona = TipoPersona.Humana,
             CondicionIva = condicionIva
         };
 
         ValidarYAgregar(contribuyente);
+        AgregarRepresentacion(usuario.Cuit, contribuyente.CUIT);
         return contribuyente;
     }
+
+    /// <summary>
+    /// Alta de una persona jurídica. No tiene clave propia: la opera la cuenta que la da de alta.
+    /// </summary>
+    /// <exception cref="ArgumentException">Datos inválidos.</exception>
+    /// <exception cref="InvalidOperationException">La cuenta no existe o el CUIT ya está registrado.</exception>
+    public Contribuyente RegistrarPersonaJuridica(string cuitUsuario, string cuit, string razonSocial,
+        CondicionIva condicionIva)
+    {
+        var usuario = ObtenerUsuario(cuitUsuario);
+        cuit = cuit?.Trim() ?? string.Empty;
+
+        if (ValidadorCUIT.MotivoInvalida(cuit) is { } motivo)
+            throw new ArgumentException(motivo);
+
+        if (!PrefijosPersonaJuridica.Contains(cuit[..2]))
+            throw new ArgumentException("El CUIT de una persona jurídica debe empezar con 30, 33 o 34.");
+
+        var contribuyente = new Contribuyente
+        {
+            CUIT = cuit,
+            NombreORazonSocial = razonSocial?.Trim() ?? string.Empty,
+            TipoPersona = TipoPersona.Juridica,
+            CondicionIva = condicionIva
+        };
+
+        ValidarYAgregar(contribuyente);
+        AgregarRepresentacion(usuario.Cuit, contribuyente.CUIT);
+        return contribuyente;
+    }
+
+    /// <summary>Indica si la cuenta <paramref name="cuitUsuario"/> puede operar el CUIT <paramref name="cuit"/>.</summary>
+    public bool Representa(string cuitUsuario, string cuit) => _usuarios.Representa(cuitUsuario, cuit);
 
     public Contribuyente? ConsultarPorCUIT(string cuit)
     {
         return _repositorio.ObtenerPorCUIT(cuit);
+    }
+
+    private Usuario ObtenerUsuario(string cuitUsuario)
+    {
+        return _usuarios.ObtenerPorCuit(cuitUsuario?.Trim() ?? string.Empty)
+            ?? throw new InvalidOperationException("No existe una cuenta de Clave Fiscal para esa CUIT/CUIL.");
+    }
+
+    private void AgregarRepresentacion(string cuitUsuario, string cuitRepresentado)
+    {
+        _usuarios.AgregarRepresentacion(new Representacion
+        {
+            CuitUsuario = cuitUsuario,
+            CuitRepresentado = cuitRepresentado,
+            FechaAlta = DateTime.UtcNow
+        });
     }
 
     private void ValidarYAgregar(Contribuyente contribuyente)

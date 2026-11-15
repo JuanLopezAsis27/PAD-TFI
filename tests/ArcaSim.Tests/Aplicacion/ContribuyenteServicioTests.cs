@@ -7,18 +7,30 @@ using ArcaSim.Aplicacion.Modelos;
 using ArcaSim.Aplicacion.Servicios;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
+using ArcaSim.Tests.Aplicacion;
 
 public class ContribuyenteServicioTests
 {
+    private const string CuitUsuario = "20401112228";
+
     private readonly RepositorioContribuyenteFalso _repositorio;
-    private readonly RenaperClienteFalso _renaper;
+    private readonly RepositorioUsuarioFalso _usuarios;
     private readonly ContribuyenteServicio _servicio;
 
     public ContribuyenteServicioTests()
     {
         _repositorio = new RepositorioContribuyenteFalso();
-        _renaper = new RenaperClienteFalso();
-        _servicio = new ContribuyenteServicio(_repositorio, _renaper);
+        _usuarios = new RepositorioUsuarioFalso();
+        _servicio = new ContribuyenteServicio(_repositorio, _usuarios);
+
+        _usuarios.Agregar(new Usuario
+        {
+            Cuit = CuitUsuario,
+            Nombre = "Lucas Matias",
+            Apellido = "Gomez",
+            Email = "lucas@example.com",
+            HashClave = "hash"
+        });
     }
 
     [Fact]
@@ -123,122 +135,133 @@ public class ContribuyenteServicioTests
         Assert.Null(resultado);
     }
 
+    // ===== Inscripción de la persona dueña de la cuenta =====
+
     [Fact]
-    public async Task RegistrarPersonaHumana_DatosValidados_RegistraConApellidoYNombre()
+    public void InscribirPersonaHumana_CuentaExistente_InscribeConLosDatosDeLaCuentaYLaRepresenta()
     {
-        var contribuyente = await _servicio.RegistrarPersonaHumanaAsync("20401112228", "Lucas Matias", "Gomez",
-            CondicionIva.Monotributista);
+        var contribuyente = _servicio.InscribirPersonaHumana(CuitUsuario, CondicionIva.Monotributista);
 
         Assert.Contains(contribuyente, _repositorio.Contribuyentes);
-        Assert.Equal("20401112228", contribuyente.CUIT);
+        Assert.Equal(CuitUsuario, contribuyente.CUIT);
         Assert.Equal("Gomez, Lucas Matias", contribuyente.NombreORazonSocial);
         Assert.Equal(TipoPersona.Humana, contribuyente.TipoPersona);
         Assert.Equal(CondicionIva.Monotributista, contribuyente.CondicionIva);
+        Assert.True(_servicio.Representa(CuitUsuario, CuitUsuario));
     }
 
     [Fact]
-    public async Task RegistrarPersonaHumana_ConsultaARenaperElDniDelCuitYLaEdadMinima()
+    public void InscribirPersonaHumana_YaInscripto_LanzaExcepcion()
     {
-        await _servicio.RegistrarPersonaHumanaAsync("20401112228", "  Lucas Matias ", " Gomez",
-            CondicionIva.Monotributista);
+        _servicio.InscribirPersonaHumana(CuitUsuario, CondicionIva.Monotributista);
 
-        var consulta = Assert.Single(_renaper.Consultas);
-        Assert.Equal(40111222, consulta.Dni);
-        Assert.Equal("Lucas Matias", consulta.Nombre);
-        Assert.Equal("Gomez", consulta.Apellido);
-        Assert.Equal(ContribuyenteServicio.EdadMinimaPersonaHumana, consulta.EdadMinima);
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            _servicio.InscribirPersonaHumana(CuitUsuario, CondicionIva.ResponsableInscripto));
+
+        Assert.Contains("Ya estás inscripto", ex.Message);
+        Assert.Single(_repositorio.Contribuyentes);
+        Assert.Single(_usuarios.Representaciones);
     }
 
     [Fact]
-    public async Task RegistrarPersonaHumana_DniConCeroAdelante_ConsultaElNumeroSinCeros()
+    public void InscribirPersonaHumana_CuitYaRegistradoSinCuenta_LoAsociaALaCuenta()
     {
-        await _servicio.RegistrarPersonaHumanaAsync("20051234562", "Ana", "Gomez", CondicionIva.Monotributista);
+        // Por ejemplo, una persona humana dada de alta antes de que existiera la Clave Fiscal.
+        var existente = new Contribuyente
+        {
+            CUIT = CuitUsuario,
+            NombreORazonSocial = "Gomez, Lucas Matias",
+            TipoPersona = TipoPersona.Humana,
+            CondicionIva = CondicionIva.ResponsableInscripto
+        };
+        _repositorio.Agregar(existente);
 
-        Assert.Equal(5123456, Assert.Single(_renaper.Consultas).Dni);
+        var contribuyente = _servicio.InscribirPersonaHumana(CuitUsuario, CondicionIva.Monotributista);
+
+        Assert.Same(existente, contribuyente);
+        Assert.Single(_repositorio.Contribuyentes);
+        Assert.True(_servicio.Representa(CuitUsuario, CuitUsuario));
     }
 
     [Fact]
-    public async Task RegistrarPersonaHumana_DatosNoCoinciden_LanzaExcepcionYNoRegistra()
+    public void InscribirPersonaHumana_CuentaInexistente_LanzaYNoInscribe()
     {
-        _renaper.Respuesta = new ResultadoValidacionPersona(DatosCoinciden: false, CumpleEdadMinima: true);
+        Assert.Throws<InvalidOperationException>(() =>
+            _servicio.InscribirPersonaHumana("20301234563", CondicionIva.Monotributista));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync("20401112228", "Otro", "Nombre", CondicionIva.Monotributista));
-
-        Assert.Contains("no coinciden", ex.Message);
         Assert.Empty(_repositorio.Contribuyentes);
     }
 
     [Fact]
-    public async Task RegistrarPersonaHumana_NoCumpleEdadMinima_LanzaExcepcionYNoRegistra()
+    public void InscribirPersonaHumana_CondicionIvaInvalida_LanzaYNoInscribe()
     {
-        _renaper.Respuesta = new ResultadoValidacionPersona(DatosCoinciden: true, CumpleEdadMinima: false);
+        Assert.Throws<ArgumentException>(() => _servicio.InscribirPersonaHumana(CuitUsuario, (CondicionIva)999));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync("20401112228", "Lucas Matias", "Gomez",
-                CondicionIva.Monotributista));
-
-        Assert.Contains("edad mínima", ex.Message);
         Assert.Empty(_repositorio.Contribuyentes);
+        Assert.Empty(_usuarios.Representaciones);
     }
 
+    // ===== Alta de personas jurídicas representadas =====
+
     [Fact]
-    public async Task RegistrarPersonaHumana_RenaperNoDisponible_PropagaExcepcionYNoRegistra()
+    public void RegistrarPersonaJuridica_DatosValidos_LaRegistraYQuedaRepresentada()
     {
-        _renaper.Error = new RenaperNoDisponibleException("RENAPER no tiene saldo de consultas.");
+        var juridica = _servicio.RegistrarPersonaJuridica(CuitUsuario, " 30712345671 ", " Comercio Demo S.A. ",
+            CondicionIva.ResponsableInscripto);
 
-        await Assert.ThrowsAsync<RenaperNoDisponibleException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync("20401112228", "Lucas Matias", "Gomez",
-                CondicionIva.Monotributista));
-
-        Assert.Empty(_repositorio.Contribuyentes);
+        Assert.Contains(juridica, _repositorio.Contribuyentes);
+        Assert.Equal("30712345671", juridica.CUIT);
+        Assert.Equal("Comercio Demo S.A.", juridica.NombreORazonSocial);
+        Assert.Equal(TipoPersona.Juridica, juridica.TipoPersona);
+        Assert.True(_servicio.Representa(CuitUsuario, "30712345671"));
+        Assert.False(_servicio.Representa(CuitUsuario, CuitUsuario));
     }
 
     [Theory]
-    [InlineData("30712345671")] // CUIT de persona jurídica
-    [InlineData("20401112229")] // dígito verificador incorrecto
-    [InlineData("2040111222")]  // le falta un dígito
-    public async Task RegistrarPersonaHumana_CuitNoValidoParaPersonaHumana_LanzaSinConsultarRenaper(string cuit)
+    [InlineData("20301234563")] // CUIT de persona humana
+    [InlineData("30712345672")] // dígito verificador incorrecto
+    public void RegistrarPersonaJuridica_CuitNoValido_LanzaYNoRegistra(string cuit)
     {
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync(cuit, "Lucas Matias", "Gomez", CondicionIva.Monotributista));
+        Assert.Throws<ArgumentException>(() =>
+            _servicio.RegistrarPersonaJuridica(CuitUsuario, cuit, "Empresa", CondicionIva.ResponsableInscripto));
 
-        Assert.Empty(_renaper.Consultas);
-    }
-
-    [Theory]
-    [InlineData("", "Gomez")]
-    [InlineData("Lucas Matias", " ")]
-    public async Task RegistrarPersonaHumana_SinNombreOApellido_LanzaSinConsultarRenaper(string nombre,
-        string apellido)
-    {
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync("20401112228", nombre, apellido, CondicionIva.Monotributista));
-
-        Assert.Empty(_renaper.Consultas);
+        Assert.Empty(_repositorio.Contribuyentes);
+        Assert.Empty(_usuarios.Representaciones);
     }
 
     [Fact]
-    public async Task RegistrarPersonaHumana_CondicionIvaInvalida_LanzaSinConsultarRenaper()
+    public void RegistrarPersonaJuridica_SinRazonSocial_LanzaYNoRegistra()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync("20401112228", "Lucas Matias", "Gomez", (CondicionIva)999));
+        Assert.Throws<ArgumentException>(() =>
+            _servicio.RegistrarPersonaJuridica(CuitUsuario, "30712345671", " ", CondicionIva.ResponsableInscripto));
 
-        Assert.Empty(_renaper.Consultas);
+        Assert.Empty(_repositorio.Contribuyentes);
     }
 
     [Fact]
-    public async Task RegistrarPersonaHumana_CuitExistente_LanzaSinConsultarRenaper()
+    public void RegistrarPersonaJuridica_CuitYaRegistrado_LanzaYNoLaRepresenta()
     {
-        await _servicio.RegistrarPersonaHumanaAsync("20401112228", "Lucas Matias", "Gomez",
-            CondicionIva.Monotributista);
-        _renaper.Consultas.Clear();
+        _servicio.Registrar(new Contribuyente
+        {
+            CUIT = "30712345671",
+            NombreORazonSocial = "Comercio Demo S.A.",
+            TipoPersona = TipoPersona.Juridica,
+            CondicionIva = CondicionIva.ResponsableInscripto
+        });
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _servicio.RegistrarPersonaHumanaAsync("20401112228", "Lucas Matias", "Gomez",
-                CondicionIva.Monotributista));
+        Assert.Throws<InvalidOperationException>(() =>
+            _servicio.RegistrarPersonaJuridica(CuitUsuario, "30712345671", "Otra", CondicionIva.ResponsableInscripto));
 
-        Assert.Empty(_renaper.Consultas);
+        Assert.False(_servicio.Representa(CuitUsuario, "30712345671"));
+    }
+
+    [Fact]
+    public void RegistrarPersonaJuridica_CuentaInexistente_LanzaYNoRegistra()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            _servicio.RegistrarPersonaJuridica("20301234563", "30712345671", "Empresa", CondicionIva.ResponsableInscripto));
+
+        Assert.Empty(_repositorio.Contribuyentes);
     }
 
     private static Contribuyente CrearContribuyente()

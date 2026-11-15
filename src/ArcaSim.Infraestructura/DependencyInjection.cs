@@ -6,6 +6,7 @@ using ArcaSim.Infraestructura.Repositorios;
 using ArcaSim.Infraestructura.Seguridad;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ArcaSim.Infraestructura;
 
@@ -43,6 +44,20 @@ public static class DependencyInjection
         services.AddScoped<
             IComprobanteRepositorio,
             ComprobanteRepositorio>();
+
+        // =================================================
+        // CLAVE FISCAL (cuentas del portal)
+        // =================================================
+
+        services.AddScoped<
+            IUsuarioRepositorio,
+            UsuarioRepositorio>();
+
+        services.AddSingleton<
+            IHasheadorClave,
+            HasheadorClavePbkdf2>();
+
+        services.TryAddSingleton(TimeProvider.System);
 
         // =================================================
         // SEGURIDAD SOAP DEL ROL 2

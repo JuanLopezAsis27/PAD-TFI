@@ -1,4 +1,6 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@* Menú lateral del portal. Solo se muestra con sesión (ver MainLayout). *@
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold" href="">ArcaSim · ARCA</a>
     </div>
@@ -7,6 +9,14 @@
 <input type="checkbox" title="Menú de navegación" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <AuthorizeView>
+        <div class="sesion px-3 pt-3">
+            <div class="small text-uppercase sesion-etiqueta">Ingresaste como</div>
+            <div class="fw-semibold text-white text-truncate" title="@context.User.Identity?.Name">@context.User.Identity?.Name</div>
+            <div class="small font-monospace sesion-cuit">@context.User.ObtenerCuit()</div>
+        </div>
+    </AuthorizeView>
+
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link text-nowrap" href="" Match="NavLinkMatch.All">
@@ -16,7 +26,7 @@
 
         <div class="nav-item px-3">
             <NavLink class="nav-link text-nowrap" href="contribuyentes">
-                <i class="bi bi-people me-2"></i> Contribuyentes
+                <i class="bi bi-people me-2"></i> Mis Contribuyentes
             </NavLink>
         </div>
 
@@ -36,6 +46,16 @@
             <NavLink class="nav-link text-nowrap" href="constatacion">
                 <i class="bi bi-qr-code-scan me-2"></i> Constatar Comprobante
             </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            @* Formulario común (no "enhanced"): al salir se recarga el portal sin la sesión. *@
+            <form action="salir" method="post">
+                <AntiforgeryToken />
+                <button type="submit" class="nav-link text-nowrap">
+                    <i class="bi bi-box-arrow-right me-2"></i> Salir
+                </button>
+            </form>
         </div>
     </nav>
 </div>

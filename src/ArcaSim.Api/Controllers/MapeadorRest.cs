@@ -24,6 +24,17 @@ internal static class MapeadorRest
             .ToList()
     };
 
+    public static UsuarioResponse MapearUsuario(Usuario u, IEnumerable<string> cuitsRepresentados) => new()
+    {
+        Cuit = u.Cuit,
+        Nombre = u.Nombre,
+        Apellido = u.Apellido,
+        Email = u.Email,
+        FechaAlta = u.FechaAlta,
+        UltimoIngreso = u.UltimoIngreso,
+        CuitsRepresentados = cuitsRepresentados.ToList()
+    };
+
     public static PuntoVentaResponse MapearPuntoVenta(PuntoVenta pv) => new()
     {
         CuitContribuyente = pv.CUITContribuyente,

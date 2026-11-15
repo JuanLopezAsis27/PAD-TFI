@@ -1,32 +1,41 @@
-using System.Security.Cryptography;
-using ArcaSim.Aplicacion.Excepciones;
+using ArcaSim.Api.Autenticacion;
+using ArcaSim.Aplicacion.Interfaces;
 using ArcaSim.Aplicacion.Servicios;
 using ArcaSim.Contratos.Requests;
 using ArcaSim.Contratos.Responses;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
 using ArcaSim.Infraestructura.Persistencia;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArcaSim.Api.Controllers;
 
+/// <summary>
+/// Contribuyentes de la cuenta con la que se ingresó: solo se ven y se operan los que representa.
+/// </summary>
 [ApiController]
+[Authorize]
 [Route("api/contribuyentes")]
 public class ContribuyentesController(
     ContribuyenteServicio contribuyenteServicio,
     PuntoVentaServicio puntoVentaServicio,
+    IAdministradorApiKeysSoap administradorApiKeys,
     AppDbContext db) : ControllerBase
 {
     /// <summary>
-    /// Lista todos los contribuyentes registrados con sus puntos de venta.
+    /// Lista los contribuyentes que representa la cuenta, con sus puntos de venta.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<ContribuyenteResponse>>> Listar(CancellationToken cancellationToken)
     {
+        var cuitUsuario = User.ObtenerCuit();
+
         var lista = await db.Contribuyentes
             .AsNoTracking()
             .Include(c => c.PuntosVenta)
+            .Where(c => db.Representaciones.Any(r => r.CuitUsuario == cuitUsuario && r.CuitRepresentado == c.CUIT))
             .OrderBy(c => c.NombreORazonSocial)
             .ToListAsync(cancellationToken);
 
@@ -39,7 +48,11 @@ public class ContribuyentesController(
     [HttpGet("{cuit}")]
     public ActionResult<ContribuyenteResponse> ObtenerPorCuit(string cuit)
     {
-        var contribuyente = contribuyenteServicio.ConsultarPorCUIT(cuit.Trim());
+        cuit = cuit.Trim();
+        if (!contribuyenteServicio.Representa(User.ObtenerCuit(), cuit))
+            return this.NoRepresenta(cuit);
+
+        var contribuyente = contribuyenteServicio.ConsultarPorCUIT(cuit);
         if (contribuyente is null)
             return NotFound(new { mensaje = $"No existe un contribuyente con CUIT {cuit}." });
 
@@ -47,45 +60,25 @@ public class ContribuyentesController(
     }
 
     /// <summary>
-    /// Alta de contribuyente. Si es persona humana, valida identidad y edad mínima con RENAPER.
+    /// Alta de contribuyente. Persona humana: se inscribe la dueña de la cuenta, con la identidad que validó
+    /// RENAPER al obtener la Clave Fiscal. Persona jurídica: la cuenta queda como su representante.
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<ContribuyenteResponse>> Registrar(
-        [FromBody] RegistrarContribuyenteRequest request,
-        CancellationToken cancellationToken)
+    public ActionResult<ContribuyenteResponse> Registrar([FromBody] RegistrarContribuyenteRequest request)
     {
         if (request is null)
             return BadRequest(new { mensaje = "Los datos del contribuyente son obligatorios." });
 
-        var cuit = request.Cuit?.Trim() ?? string.Empty;
+        var cuitUsuario = User.ObtenerCuit();
         var condicionIva = (CondicionIva)request.CondicionIva;
+        bool esHumana = string.Equals(request.TipoPersona, "Humana", StringComparison.OrdinalIgnoreCase);
 
         try
         {
-            Contribuyente creado;
-            bool esHumana = string.Equals(request.TipoPersona, "Humana", StringComparison.OrdinalIgnoreCase);
-
-            if (esHumana)
-            {
-                creado = await contribuyenteServicio.RegistrarPersonaHumanaAsync(
-                    cuit,
-                    request.Nombre ?? string.Empty,
-                    request.Apellido ?? string.Empty,
-                    condicionIva,
-                    cancellationToken);
-            }
-            else
-            {
-                var juridica = new Contribuyente
-                {
-                    CUIT = cuit,
-                    NombreORazonSocial = request.RazonSocial?.Trim() ?? string.Empty,
-                    TipoPersona = TipoPersona.Juridica,
-                    CondicionIva = condicionIva
-                };
-                contribuyenteServicio.Registrar(juridica);
-                creado = juridica;
-            }
+            Contribuyente creado = esHumana
+                ? contribuyenteServicio.InscribirPersonaHumana(cuitUsuario, condicionIva)
+                : contribuyenteServicio.RegistrarPersonaJuridica(cuitUsuario, request.Cuit ?? string.Empty,
+                    request.RazonSocial ?? string.Empty, condicionIva);
 
             return CreatedAtAction(
                 nameof(ObtenerPorCuit),
@@ -98,15 +91,8 @@ public class ContribuyentesController(
         }
         catch (InvalidOperationException ex)
         {
-            // Según docs/renaper.md: 409 si ya existe, 422 si RENAPER rechazó identidad/edad
-            if (ex.Message.Contains("Ya existe", StringComparison.OrdinalIgnoreCase))
-                return Conflict(new { mensaje = ex.Message });
-
-            return UnprocessableEntity(new { mensaje = ex.Message });
-        }
-        catch (RenaperNoDisponibleException ex)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { mensaje = ex.Message });
+            // Ya inscripto o CUIT ya registrado.
+            return Conflict(new { mensaje = ex.Message });
         }
     }
 
@@ -121,11 +107,15 @@ public class ContribuyentesController(
         if (request is null)
             return BadRequest(new { mensaje = "Los datos del punto de venta son obligatorios." });
 
+        cuit = cuit.Trim();
+        if (!contribuyenteServicio.Representa(User.ObtenerCuit(), cuit))
+            return this.NoRepresenta(cuit);
+
         try
         {
             var puntoVenta = new PuntoVenta
             {
-                CUITContribuyente = cuit.Trim(),
+                CUITContribuyente = cuit,
                 Numero = request.Numero,
                 Habilitado = request.Habilitado
             };
@@ -150,25 +140,31 @@ public class ContribuyentesController(
 
     /// <summary>
     /// Genera o regenera la API Key del contribuyente para usar en el web service SOAP WSFEv1.
+    /// Se guarda solo su hash (la valida el SOAP) y las claves anteriores quedan revocadas.
     /// Se devuelve en texto plano una única vez.
     /// </summary>
     [HttpPost("{cuit}/api-key")]
-    public ActionResult<ApiKeyResponse> GenerarApiKey(string cuit)
+    public async Task<ActionResult<ApiKeyResponse>> GenerarApiKey(string cuit, CancellationToken cancellationToken)
     {
-        var contribuyente = contribuyenteServicio.ConsultarPorCUIT(cuit.Trim());
-        if (contribuyente is null)
+        cuit = cuit.Trim();
+        if (!contribuyenteServicio.Representa(User.ObtenerCuit(), cuit))
+            return this.NoRepresenta(cuit);
+
+        if (contribuyenteServicio.ConsultarPorCUIT(cuit) is null)
             return NotFound(new { mensaje = $"No existe un contribuyente con CUIT {cuit}." });
 
-        var bytes = RandomNumberGenerator.GetBytes(24);
-        var token = $"arca_{Convert.ToHexString(bytes).ToLowerInvariant()}";
+        var (nueva, revocadas) = await administradorApiKeys.RegenerarAsync(cuit, cancellationToken);
+
+        var mensaje = "Guardá esta API Key en un lugar seguro: por seguridad se muestra una sola vez.";
+        if (revocadas > 0)
+            mensaje += " La anterior quedó revocada: el web service ya no la acepta.";
 
         return Ok(new ApiKeyResponse
         {
-            Cuit = contribuyente.CUIT,
-            ApiKey = token,
-            FechaGeneracion = DateTimeOffset.Now,
-            Mensaje = "Guardá esta API Key en un lugar seguro: por seguridad se muestra una sola vez."
+            Cuit = nueva.Cuit,
+            ApiKey = nueva.Clave,
+            FechaGeneracion = new DateTimeOffset(DateTime.SpecifyKind(nueva.FechaCreacion, DateTimeKind.Utc)),
+            Mensaje = mensaje
         });
     }
 }
-

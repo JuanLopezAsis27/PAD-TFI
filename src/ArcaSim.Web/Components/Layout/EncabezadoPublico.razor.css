@@ -1,0 +1,77 @@
+.encabezado {
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(11, 34, 57, 0.12);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.franja {
+    background-color: #0b2239;
+    color: #c9d6e3;
+    font-size: 0.78rem;
+    padding: 0.3rem 0;
+}
+
+.barra {
+    padding: 0.75rem 0;
+}
+
+.marca {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: #0b2239;
+    text-decoration: none;
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.6rem;
+    background-image: linear-gradient(135deg, #13315c 0%, #1b6ec2 100%);
+    color: #fff;
+    font-size: 1.3rem;
+}
+
+.marca-nombre {
+    font-weight: 800;
+    font-size: 1.3rem;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+}
+
+.marca-sub {
+    font-size: 0.75rem;
+    color: #5a6b7d;
+}
+
+nav ::deep .enlace {
+    color: #13315c;
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+    nav ::deep .enlace:hover,
+    nav ::deep .enlace.active {
+        color: #1b6ec2;
+        text-decoration: underline;
+    }
+
+.btn-ingresar {
+    white-space: nowrap;
+    font-weight: 600;
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+}
+
+@media (max-width: 575.98px) {
+    .marca-sub {
+        display: none;
+    }
+}

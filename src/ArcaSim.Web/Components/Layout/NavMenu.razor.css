@@ -64,6 +64,15 @@
     color: white;
 }
 
+.sesion-etiqueta {
+    color: #9fb3c8;
+    letter-spacing: 0.04em;
+}
+
+.sesion-cuit {
+    color: #d7d7d7;
+}
+
 .nav-scrollable {
     display: none;
 }
