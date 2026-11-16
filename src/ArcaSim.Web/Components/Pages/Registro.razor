@@ -14,10 +14,8 @@
             inscribís como contribuyente o operás las personas jurídicas que representás.
         </p>
 
-        @if (_error is not null)
-        {
-            <div class="alert alert-danger small" role="alert">@_error</div>
-        }
+        @* El botón está al final del formulario: el error se trae a la vista al aparecer. *@
+        <AvisoMensaje Mensaje="_error" Clase="small" />
 
         <EditForm Model="_modelo" OnSubmit="RegistrarAsync">
             <!-- 1. Identidad -->
@@ -131,7 +129,7 @@
 
     private readonly Modelo _modelo = new();
     private bool _enviando;
-    private string? _error;
+    private Mensaje? _error;
 
     private string CuitNormalizada => (_modelo.Cuit ?? string.Empty).Replace("-", string.Empty).Trim();
 
@@ -148,10 +146,14 @@
 
     private async Task RegistrarAsync()
     {
-        _error = ValidarLocalmente();
-        if (_error is not null)
+        // Un Mensaje nuevo en cada intento: si el error se repite, se vuelve a traer a la vista.
+        if (ValidarLocalmente() is { } errorLocal)
+        {
+            _error = Mensaje.Error(errorLocal);
             return;
+        }
 
+        _error = null;
         _enviando = true;
         try
         {
@@ -166,7 +168,7 @@
 
             if (creada is null)
             {
-                _error = error ?? "No se pudo crear la Clave Fiscal.";
+                _error = Mensaje.Error(error ?? "No se pudo crear la Clave Fiscal.");
                 return;
             }
 
@@ -174,7 +176,7 @@
         }
         catch (HttpRequestException)
         {
-            _error = "No se pudo conectar con ArcaSim.Api. Probá de nuevo en unos minutos.";
+            _error = Mensaje.Error("No se pudo conectar con ArcaSim.Api. Probá de nuevo en unos minutos.");
         }
         finally
         {

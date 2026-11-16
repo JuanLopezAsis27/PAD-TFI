@@ -1,6 +1,7 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @inject ArcaSimApiCliente Api
+@inject DireccionesWebService DireccionesSoap
 
 <PageTitle>ArcaSim - Portal de Facturación Electrónica</PageTitle>
 
@@ -98,18 +99,43 @@
             }
         </div>
 
-        <section class="desarrolladores">
-            <div class="row g-3 align-items-center">
-                <div class="col-lg-8">
-                    <h2 class="h5 fw-bold mb-1"><i class="bi bi-code-slash me-1"></i> ¿Tu sistema factura? Usá el web service WSFEv1</h2>
-                    <p class="mb-0 small">
-                        Mismo contrato SOAP que ARCA: <code>FECompUltimoAutorizado</code>, <code>FECAESolicitar</code>,
-                        <code>FECompConsultar</code> y las tablas <code>FEParamGet*</code>. Se autentica con la API key que generás
-                        en el portal, enviada en el objeto <code>Auth</code> de cada llamada.
+        @* ===== Documentación del web service (resumen; la guía completa está en /documentacion) ===== *@
+        <section id="documentacion" class="desarrolladores">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-6">
+                    <span class="desarrolladores-etiqueta"><i class="bi bi-code-slash me-1"></i> Documentación para desarrolladores</span>
+                    <h2 class="desarrolladores-titulo">¿Tu sistema factura? Integralo con el web service WSFEv1</h2>
+                    <p class="text-muted">
+                        Mismo contrato SOAP que ARCA: mismas operaciones, campos y namespace. Tu sistema se autentica con la
+                        API key que generás en el portal, enviada en el objeto <code>Auth</code> de cada llamada.
                     </p>
+
+                    <ol class="desarrolladores-pasos">
+                        <li><strong>Generá la API key</strong> de tu contribuyente en <em>Mis contribuyentes</em>.</li>
+                        <li><strong><code>FECompUltimoAutorizado</code></strong>: el último número autorizado; el próximo es ese + 1.</li>
+                        <li><strong><code>FECAESolicitar</code></strong>: mandá el comprobante y recibí el CAE con su vencimiento.</li>
+                    </ol>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="documentacion" class="btn btn-primary">
+                            <i class="bi bi-book me-1"></i> Ver la documentación
+                        </a>
+                        <a href="documentacion#clientes" class="btn btn-outline-primary">Ejemplos en C#, Python y Node.js</a>
+                    </div>
                 </div>
-                <div class="col-lg-4 text-lg-end">
-                    <a href="ingresar" class="btn btn-outline-primary">Generar mi API key</a>
+
+                <div class="col-lg-6">
+                    <div class="desarrolladores-muestra">
+                        <div class="muestra-etiqueta">WSDL</div>
+                        <code class="muestra-url">@DireccionesSoap.Wsdl</code>
+
+                        <div class="muestra-etiqueta mt-3">Autenticación en cada llamada</div>
+                        <pre class="mb-0"><code>&lt;ar:Auth&gt;
+  &lt;ar:Token&gt;TU_API_KEY&lt;/ar:Token&gt;
+  &lt;ar:Sign&gt;&lt;/ar:Sign&gt;
+  &lt;ar:Cuit&gt;30712345671&lt;/ar:Cuit&gt;
+&lt;/ar:Auth&gt;</code></pre>
+                    </div>
                 </div>
             </div>
         </section>

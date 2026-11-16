@@ -7,44 +7,39 @@
 
 <h2 class="mb-3">Mis Contribuyentes, Puntos de Venta y API Key</h2>
 
-@if (!string.IsNullOrWhiteSpace(_mensajeExito))
-{
-    <div class="alert alert-success alert-dismissible fade show">
-        @_mensajeExito
-        <button type="button" class="btn-close" @onclick="() => _mensajeExito = null"></button>
-    </div>
-}
-
-@if (!string.IsNullOrWhiteSpace(_mensajeError))
-{
-    <div class="alert alert-danger alert-dismissible fade show">
-        <strong>Error:</strong> @_mensajeError
-        <button type="button" class="btn-close" @onclick="() => _mensajeError = null"></button>
-    </div>
-}
+@* Los avisos quedan arriba, pero al aparecer se traen a la vista (los botones están más abajo). *@
+<AvisoMensaje Mensaje="_mensajeExito" AlCerrar="() => _mensajeExito = null" />
+<AvisoMensaje Mensaje="_mensajeError" AlCerrar="() => _mensajeError = null" />
 
 @if (_apiKeyGenerada is not null)
 {
-    <div class="alert alert-warning border-warning shadow-sm mb-4">
-        <div class="d-flex justify-content-between align-items-start">
-            <div>
-                <h5 class="alert-heading mb-1">API Key generada para CUIT <span class="font-monospace text-dark fw-semibold">@_apiKeyGenerada.Cuit</span></h5>
-                <p class="mb-2 small">@_apiKeyGenerada.Mensaje</p>
+    <Aviso Clave="_apiKeyGenerada">
+        <div class="alert alert-warning border-warning shadow-sm mb-4" role="status">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="alert-heading mb-1">API Key generada para CUIT <span class="font-monospace text-dark fw-semibold">@_apiKeyGenerada.Cuit</span></h5>
+                    <p class="mb-2 small">@_apiKeyGenerada.Mensaje</p>
+                </div>
+                <button type="button" class="btn-close" aria-label="Cerrar" @onclick="() => _apiKeyGenerada = null"></button>
             </div>
-            <button type="button" class="btn-close" @onclick="() => _apiKeyGenerada = null"></button>
-        </div>
-        <div class="p-2 bg-dark text-light rounded font-monospace mb-2">
-            @_apiKeyGenerada.ApiKey
-        </div>
-        <details class="small">
-            <summary class="fw-semibold" style="cursor:pointer">Ver cómo enviarla en el bloque &lt;ar:Auth&gt; de SOAP WSFEv1</summary>
-            <pre class="bg-light p-2 border rounded mt-2 mb-0"><code>&lt;ar:Auth&gt;
+            <div class="p-2 bg-dark text-light rounded font-monospace mb-2 text-break">
+                @_apiKeyGenerada.ApiKey
+            </div>
+            <details class="small">
+                <summary class="fw-semibold" style="cursor:pointer">Ver cómo enviarla en el bloque &lt;ar:Auth&gt; de SOAP WSFEv1</summary>
+                <pre class="bg-light p-2 border rounded mt-2 mb-0"><code>&lt;ar:Auth&gt;
   &lt;ar:Token&gt;@_apiKeyGenerada.ApiKey&lt;/ar:Token&gt;
   &lt;ar:Sign&gt;&lt;/ar:Sign&gt;
   &lt;ar:Cuit&gt;@_apiKeyGenerada.Cuit&lt;/ar:Cuit&gt;
 &lt;/ar:Auth&gt;</code></pre>
-        </details>
-    </div>
+                @* En otra pestaña: la API key se muestra una sola vez y no hay que perderla al salir de acá. *@
+                <p class="mt-2 mb-0">
+                    Pedidos completos, campos y ejemplos en C#, Python y Node.js:
+                    <a href="documentacion" target="_blank" rel="noopener" class="alert-link">documentación del web service</a>.
+                </p>
+            </details>
+        </div>
+    </Aviso>
 }
 
 <div class="row g-4">
@@ -217,8 +212,8 @@
 
     private bool _cargando = true;
     private bool _procesando;
-    private string? _mensajeExito;
-    private string? _mensajeError;
+    private Mensaje? _mensajeExito;
+    private Mensaje? _mensajeError;
     private ApiKeyResponse? _apiKeyGenerada;
 
     private bool EstaInscripto => _contribuyentes.Any(c => c.Cuit == _cuitUsuario);
@@ -249,7 +244,7 @@
         }
         catch (Exception ex)
         {
-            _mensajeError = $"No se pudieron cargar los contribuyentes: {ex.Message}";
+            _mensajeError = Mensaje.Error($"No se pudieron cargar los contribuyentes: {ex.Message}");
         }
         finally
         {
@@ -272,13 +267,13 @@
             var (creado, error) = await Api.RegistrarContribuyenteAsync(pedido);
             if (error is not null || creado is null)
             {
-                _mensajeError = error ?? "No se pudo registrar el contribuyente.";
+                _mensajeError = Mensaje.Error(error ?? "No se pudo registrar el contribuyente.");
                 return;
             }
 
-            _mensajeExito = esInscripcion
+            _mensajeExito = Mensaje.Exito(esInscripcion
                 ? $"Quedaste inscripto como {creado.CondicionIvaDescripcion}. Ahora habilitá un punto de venta para facturar."
-                : $"{creado.NombreORazonSocial} (CUIT {creado.Cuit}) dada de alta: tu cuenta quedó como su representante.";
+                : $"{creado.NombreORazonSocial} (CUIT {creado.Cuit}) dada de alta: tu cuenta quedó como su representante.");
 
             if (!esInscripcion)
                 _juridica = new RegistrarContribuyenteRequest { TipoPersona = "Juridica", CondicionIva = 1 };
@@ -314,11 +309,11 @@
 
         if (error is not null || creado is null)
         {
-            _mensajeError = error ?? "No se pudo dar de alta el punto de venta.";
+            _mensajeError = Mensaje.Error(error ?? "No se pudo dar de alta el punto de venta.");
             return;
         }
 
-        _mensajeExito = $"Punto de venta N° {creado.Numero:D5} agregado al CUIT {cuit}.";
+        _mensajeExito = Mensaje.Exito($"Punto de venta N° {creado.Numero:D5} agregado al CUIT {cuit}.");
         await CargarContribuyentesAsync();
     }
 
@@ -330,7 +325,7 @@
         var (datos, error) = await Api.GenerarApiKeyAsync(cuit);
         if (error is not null || datos is null)
         {
-            _mensajeError = error ?? "No se pudo generar la API Key.";
+            _mensajeError = Mensaje.Error(error ?? "No se pudo generar la API Key.");
             return;
         }
 

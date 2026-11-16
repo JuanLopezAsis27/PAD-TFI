@@ -1,0 +1,29 @@
+@* Mensaje de confirmación o de error (ver Mensaje) con la cruz para cerrarlo. Se trae a la vista al aparecer. *@
+
+<Aviso Clave="Mensaje">
+    @if (Mensaje is not null)
+    {
+        <div class="alert @(Mensaje.EsError ? "alert-danger" : "alert-success") @Clase d-flex align-items-start gap-2"
+             role="@(Mensaje.EsError ? "alert" : "status")">
+            <i class="bi @(Mensaje.EsError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") flex-shrink-0"></i>
+            <div class="flex-grow-1">@Mensaje.Texto</div>
+            @if (AlCerrar.HasDelegate)
+            {
+                <button type="button" class="btn-close flex-shrink-0" aria-label="Cerrar" @onclick="AlCerrar"></button>
+            }
+        </div>
+    }
+</Aviso>
+
+@code {
+    [Parameter]
+    public Mensaje? Mensaje { get; set; }
+
+    /// <summary>Si se indica, se muestra la cruz para cerrar el mensaje.</summary>
+    [Parameter]
+    public EventCallback AlCerrar { get; set; }
+
+    /// <summary>Clases extra para el alert (por ejemplo, "small").</summary>
+    [Parameter]
+    public string? Clase { get; set; }
+}

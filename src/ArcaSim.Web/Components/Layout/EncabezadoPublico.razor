@@ -1,6 +1,9 @@
-@* Encabezado del sitio público (sin sesión): portada, constatación, ingresar y obtener Clave Fiscal. *@
+@*
+    Encabezado del sitio público (sin sesión): portada, constatación, documentación, ingresar y obtener
+    Clave Fiscal. Queda fijo arriba: data-encabezado-fijo le avisa a portal.js cuánto tapa al desplazar.
+*@
 
-<header class="encabezado">
+<header class="encabezado" data-encabezado-fijo>
     <div class="franja">
         <div class="container-xl">
             <i class="bi bi-mortarboard me-1"></i>
@@ -21,6 +24,9 @@
             <nav class="d-flex align-items-center gap-1 gap-md-3">
                 <NavLink class="enlace d-none d-md-inline" href="constatacion">
                     <i class="bi bi-patch-check me-1"></i> Constatar comprobante
+                </NavLink>
+                <NavLink class="enlace d-none d-lg-inline" href="documentacion">
+                    <i class="bi bi-code-slash me-1"></i> Documentación
                 </NavLink>
                 <NavLink class="enlace d-none d-md-inline" href="registro">
                     <i class="bi bi-person-plus me-1"></i> Obtener Clave Fiscal

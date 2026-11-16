@@ -187,6 +187,12 @@ vacío valida la API key; con `Sign`, valida el Ticket de Acceso del WSAA.
 Errores de autenticación (mismos códigos que ARCA): **600** si la API key no es válida o fue
 revocada, y **601** si la CUIT del `Auth` no corresponde a esa API key.
 
+La guía para los otros grupos está en el propio portal, sin iniciar sesión: **`/documentacion`**
+(datos de conexión, pedidos y respuestas reales, campos, tablas de códigos, errores y programas de
+ejemplo en C#, Python y Node.js). La dirección del servicio que muestra sale de `Api:UrlPublica` o,
+si no está, de `Api:UrlBase`; hay que configurar `Api__UrlPublica` cuando el portal llama a la API
+por una dirección interna (en Docker Compose, `http://api:8080`).
+
 ### Integración con RENAPER
 
 Usamos el servicio **Renaper Validation** de otro grupo. No devuelve los datos de la persona: solo

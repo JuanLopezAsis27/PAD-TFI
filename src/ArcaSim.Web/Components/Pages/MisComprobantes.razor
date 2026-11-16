@@ -11,113 +11,116 @@
     <a href="emitir" class="btn btn-primary btn-sm">+ Emitir Nuevo Comprobante</a>
 </div>
 
-<!-- Detalle del comprobante seleccionado (con Código QR de ARCA) -->
+<!-- Detalle del comprobante seleccionado (con Código QR de ARCA). Se abre desde la tabla de abajo:
+     al aparecer se trae a la vista. -->
 @if (_seleccionado is not null)
 {
-    <div class="card border-primary shadow mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <strong>
-                Detalle del Comprobante: @_seleccionado.TipoComprobanteDescripcion
-                N° @_seleccionado.PuntoVentaNumero.ToString("D5")-@_seleccionado.Numero.ToString("D8")
-            </strong>
-            <button type="button" class="btn btn-sm btn-light" @onclick="() => _seleccionado = null">Cerrar detalle</button>
-        </div>
-        <div class="card-body">
-            <div class="row g-4 align-items-center">
-                <div class="col-md-8">
-                    <div class="row g-2 mb-3">
-                        <div class="col-sm-6">
-                            <span class="text-muted small d-block">CUIT Emisor</span>
-                            <span class="font-monospace text-dark fw-semibold">@_seleccionado.CuitEmisor</span>
-                        </div>
-                        <div class="col-sm-6">
-                            <span class="text-muted small d-block">Fecha de Emisión</span>
-                            <strong>@_seleccionado.Fecha.ToString("dd/MM/yyyy")</strong>
-                        </div>
-                        <div class="col-sm-6">
-                            <span class="text-muted small d-block">Receptor</span>
-                            @if (_seleccionado.TipoDocumentoReceptor == 99)
-                            {
-                                <strong>Consumidor Final</strong>
-                            }
-                            else
-                            {
-                                <span class="small text-muted">@ObtenerEtiquetaDocumento(_seleccionado.TipoDocumentoReceptor):</span>
-                                <span class="font-monospace text-dark fw-semibold">@_seleccionado.NumeroDocumentoReceptor</span>
-                            }
-                        </div>
-                        <div class="col-sm-6">
-                            <span class="text-muted small d-block">Moneda / Cotización</span>
-                            <strong>@_seleccionado.Moneda (@_seleccionado.Cotizacion)</strong>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive mb-3">
-                        <table class="table table-sm table-bordered mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Importe Neto</th>
-                                    <th>Importe IVA</th>
-                                    <th>Importe Exento</th>
-                                    <th>Tributos</th>
-                                    <th>Importe Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>$ @_seleccionado.ImporteNeto.ToString("N2")</td>
-                                    <td>$ @_seleccionado.ImporteIva.ToString("N2")</td>
-                                    <td>$ @_seleccionado.ImporteExento.ToString("N2")</td>
-                                    <td>$ @_seleccionado.ImporteTributos.ToString("N2")</td>
-                                    <td class="fw-bold">$ @_seleccionado.ImporteTotal.ToString("N2")</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="p-3 bg-light rounded border">
-                        <div class="row">
+    <Aviso Clave="_seleccionado">
+        <div class="card border-primary shadow mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <strong>
+                    Detalle del Comprobante: @_seleccionado.TipoComprobanteDescripcion
+                    N° @_seleccionado.PuntoVentaNumero.ToString("D5")-@_seleccionado.Numero.ToString("D8")
+                </strong>
+                <button type="button" class="btn btn-sm btn-light" @onclick="() => _seleccionado = null">Cerrar detalle</button>
+            </div>
+            <div class="card-body">
+                <div class="row g-4 align-items-center">
+                    <div class="col-md-8">
+                        <div class="row g-2 mb-3">
                             <div class="col-sm-6">
-                                <span class="text-muted small d-block">CAE (Código de Autorización Electrónico)</span>
-                                <span class="font-monospace text-dark fw-semibold fs-5">@(_seleccionado.Cae ?? "-")</span>
+                                <span class="text-muted small d-block">CUIT Emisor</span>
+                                <span class="font-monospace text-dark fw-semibold">@_seleccionado.CuitEmisor</span>
                             </div>
                             <div class="col-sm-6">
-                                <span class="text-muted small d-block">Fecha de Vencimiento del CAE</span>
-                                <strong>@(_seleccionado.FechaVencimientoCae?.ToString("dd/MM/yyyy") ?? "-")</strong>
+                                <span class="text-muted small d-block">Fecha de Emisión</span>
+                                <strong>@_seleccionado.Fecha.ToString("dd/MM/yyyy")</strong>
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Receptor</span>
+                                @if (_seleccionado.TipoDocumentoReceptor == 99)
+                                {
+                                    <strong>Consumidor Final</strong>
+                                }
+                                else
+                                {
+                                    <span class="small text-muted">@ObtenerEtiquetaDocumento(_seleccionado.TipoDocumentoReceptor):</span>
+                                    <span class="font-monospace text-dark fw-semibold">@_seleccionado.NumeroDocumentoReceptor</span>
+                                }
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Moneda / Cotización</span>
+                                <strong>@_seleccionado.Moneda (@_seleccionado.Cotizacion)</strong>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Importe Neto</th>
+                                        <th>Importe IVA</th>
+                                        <th>Importe Exento</th>
+                                        <th>Tributos</th>
+                                        <th>Importe Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>$ @_seleccionado.ImporteNeto.ToString("N2")</td>
+                                        <td>$ @_seleccionado.ImporteIva.ToString("N2")</td>
+                                        <td>$ @_seleccionado.ImporteExento.ToString("N2")</td>
+                                        <td>$ @_seleccionado.ImporteTributos.ToString("N2")</td>
+                                        <td class="fw-bold">$ @_seleccionado.ImporteTotal.ToString("N2")</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="p-3 bg-light rounded border">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <span class="text-muted small d-block">CAE (Código de Autorización Electrónico)</span>
+                                    <span class="font-monospace text-dark fw-semibold fs-5">@(_seleccionado.Cae ?? "-")</span>
+                                </div>
+                                <div class="col-sm-6">
+                                    <span class="text-muted small d-block">Fecha de Vencimiento del CAE</span>
+                                    <strong>@(_seleccionado.FechaVencimientoCae?.ToString("dd/MM/yyyy") ?? "-")</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Columna del Código QR Oficial de ARCA -->
-                <div class="col-md-4 text-center border-start">
-                    <h6 class="fw-bold mb-2">Código QR Oficial ARCA</h6>
-                    @if (!string.IsNullOrWhiteSpace(_seleccionado.UrlQr))
-                    {
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=@Uri.EscapeDataString(_seleccionado.UrlQr)"
-                             alt="Código QR ARCA"
-                             width="170"
-                             height="170"
-                             class="img-thumbnail mb-2" />
+                    <!-- Columna del Código QR Oficial de ARCA -->
+                    <div class="col-md-4 text-center border-start">
+                        <h6 class="fw-bold mb-2">Código QR Oficial ARCA</h6>
+                        @if (!string.IsNullOrWhiteSpace(_seleccionado.UrlQr))
+                        {
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=@Uri.EscapeDataString(_seleccionado.UrlQr)"
+                                 alt="Código QR ARCA"
+                                 width="170"
+                                 height="170"
+                                 class="img-thumbnail mb-2" />
 
-                        <div class="small text-muted mb-2">
-                            URL según especificación ARCA (<code>/fe/qr/?p=...</code>):
-                        </div>
-                        <input class="form-control form-control-sm font-monospace mb-2" readonly value="@_seleccionado.UrlQr" />
+                            <div class="small text-muted mb-2">
+                                URL según especificación ARCA (<code>/fe/qr/?p=...</code>):
+                            </div>
+                            <input class="form-control form-control-sm font-monospace mb-2" readonly value="@_seleccionado.UrlQr" />
 
-                        <a href="constatacion?qr=@Uri.EscapeDataString(_seleccionado.UrlQr)"
-                           class="btn btn-sm btn-outline-primary w-100">
-                            Verificar este QR en Constatación Pública
-                        </a>
-                    }
-                    else
-                    {
-                        <p class="text-muted small">Sin código QR disponible.</p>
-                    }
+                            <a href="constatacion?qr=@Uri.EscapeDataString(_seleccionado.UrlQr)"
+                               class="btn btn-sm btn-outline-primary w-100">
+                                Verificar este QR en Constatación Pública
+                            </a>
+                        }
+                        else
+                        {
+                            <p class="text-muted small">Sin código QR disponible.</p>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </Aviso>
 }
 
 <!-- Filtro por Contribuyente -->

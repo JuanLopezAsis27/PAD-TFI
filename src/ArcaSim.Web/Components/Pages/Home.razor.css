@@ -129,18 +129,81 @@
     color: #5a6b7d;
 }
 
-/* Desarrolladores */
+/* Documentación para desarrolladores */
 
 .desarrolladores {
     background-color: #fff;
-    border: 1px dashed #b8c7d6;
+    border: 1px solid #dfe5ec;
+    border-top: 4px solid #1b6ec2;
     border-radius: 0.85rem;
-    padding: 1.5rem;
+    padding: 1.75rem;
     margin-bottom: 1rem;
+    scroll-margin-top: calc(var(--alto-encabezado, 0px) + 1rem);
 }
+
+.desarrolladores-etiqueta {
+    display: inline-block;
+    background-color: #e7f0fa;
+    color: #1b6ec2;
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.desarrolladores-titulo {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0b2239;
+    margin-bottom: 0.6rem;
+}
+
+.desarrolladores-pasos {
+    padding-left: 1.2rem;
+    margin-bottom: 1.25rem;
+}
+
+    .desarrolladores-pasos li {
+        margin-bottom: 0.35rem;
+    }
+
+.desarrolladores-muestra {
+    background-color: #0b2239;
+    color: #e6edf5;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    font-size: 0.85rem;
+}
+
+.muestra-etiqueta {
+    color: #9fb6cf;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+}
+
+.muestra-url {
+    color: #ffd78a;
+    word-break: break-all;
+}
+
+.desarrolladores-muestra pre {
+    color: inherit;
+    overflow-x: auto;
+}
+
+    .desarrolladores-muestra pre code {
+        color: inherit;
+    }
 
 @media (max-width: 575.98px) {
     .portada {
         padding: 1.75rem 1.25rem;
+    }
+
+    .desarrolladores {
+        padding: 1.25rem;
     }
 }

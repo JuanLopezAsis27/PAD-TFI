@@ -1,0 +1,53 @@
+.bloque-codigo {
+    background-color: #0b2239;
+    border-radius: 0.6rem;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.bloque-codigo-barra {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem 0.35rem 0.9rem;
+    background-color: #13315c;
+    color: #9fb6cf;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.btn-copiar {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: transparent;
+    color: #dbe6f2;
+    border-radius: 0.4rem;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.78rem;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+}
+
+    .btn-copiar:hover,
+    .btn-copiar:focus-visible {
+        background-color: rgba(255, 255, 255, 0.12);
+        color: #fff;
+    }
+
+pre {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    max-height: 32rem;
+    overflow: auto;
+    color: #e6edf5;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    tab-size: 4;
+}
+
+    pre code {
+        color: inherit;
+        white-space: pre;
+    }
