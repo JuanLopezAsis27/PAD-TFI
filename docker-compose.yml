@@ -62,6 +62,8 @@ services:
       TZ: America/Argentina/Buenos_Aires
       # El portal llama a la API desde el servidor, por la red interna de Docker.
       Api__UrlBase: "http://api:8080"
+      # La que ven los sistemas de afuera: se muestra en la documentación del web service (/documentacion).
+      Api__UrlPublica: "http://localhost:5030"
     ports:
       - "5247:8080"
 

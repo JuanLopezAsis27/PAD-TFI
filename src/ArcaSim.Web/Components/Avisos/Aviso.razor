@@ -1,0 +1,54 @@
+@inject IJSRuntime JS
+
+@*
+    Envuelve un aviso: un error, una confirmación o el resultado de una acción. Cuando aparece uno nuevo
+    lo trae a la vista y le pasa el foco. Así se ve aunque el botón que lo provocó esté al final de un
+    formulario largo y el aviso, arriba de la página.
+
+    Uso:
+        <Aviso Clave="_resultado"> ...lo que se muestra... </Aviso>
+    Para un texto de confirmación o de error, usar <AvisoMensaje>.
+*@
+
+@if (Clave is not null)
+{
+    @* @key: con cada aviso nuevo se crea el elemento de nuevo y se repite la animación de entrada. *@
+    <div @key="Clave" @ref="_contenedor" class="aviso" tabindex="-1">
+        @ChildContent
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Lo que se está mostrando (el mensaje, la respuesta de la API, ...). Si es null no se muestra nada.
+    /// Se compara por referencia: un objeto nuevo es un aviso nuevo y se trae a la vista.
+    /// </summary>
+    [Parameter]
+    public object? Clave { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private ElementReference _contenedor;
+    private object? _mostrado;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ReferenceEquals(Clave, _mostrado))
+            return;
+
+        _mostrado = Clave;
+        if (Clave is null)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("arcaSim.mostrarAviso", _contenedor);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException)
+        {
+            // Sin el script o sin conexión con el navegador el aviso igual está en la página: no se
+            // corta el circuito por no poder desplazarla.
+        }
+    }
+}

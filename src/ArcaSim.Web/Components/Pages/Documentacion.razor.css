@@ -1,0 +1,305 @@
+/* --alto-encabezado lo define el layout público (encabezado fijo). Con sesión no hay encabezado fijo. */
+
+.doc-cabecera {
+    background-image: linear-gradient(120deg, #0b2239 0%, #13315c 55%, #1b6ec2 100%);
+    color: #fff;
+    border-radius: 1rem;
+    padding: 2.25rem 2rem;
+    margin-bottom: 2rem;
+}
+
+.doc-etiqueta {
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.8rem;
+    margin-bottom: 0.9rem;
+}
+
+.doc-titulo {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 0.9rem;
+}
+
+.doc-bajada {
+    color: #d6e2ef;
+    font-size: 1.02rem;
+    max-width: 48rem;
+    margin-bottom: 1.25rem;
+}
+
+    .doc-bajada strong {
+        color: #fff;
+    }
+
+.doc-datos-rapidos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+    .doc-datos-rapidos li {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.85rem;
+    }
+
+    .doc-datos-rapidos i {
+        margin-right: 0.3rem;
+    }
+
+    .doc-datos-rapidos code {
+        color: #ffd78a;
+    }
+
+/* ===== Índice ===== */
+
+.doc-indice {
+    position: sticky;
+    top: calc(var(--alto-encabezado, 0px) + 1rem);
+    background-color: #fff;
+    border: 1px solid #dfe5ec;
+    border-radius: 0.85rem;
+    padding: 1rem;
+}
+
+.doc-indice-titulo {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #5a6b7d;
+    margin-bottom: 0.5rem;
+}
+
+.doc-indice ul,
+.doc-indice-movil ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doc-indice li a {
+    display: block;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.4rem;
+    color: #13315c;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+    .doc-indice li a:hover {
+        background-color: #e7f0fa;
+        color: #1b6ec2;
+    }
+
+.doc-indice-movil {
+    background-color: #fff;
+    border: 1px solid #dfe5ec;
+    border-radius: 0.85rem;
+    padding: 0.75rem 1rem;
+}
+
+    .doc-indice-movil summary {
+        font-weight: 600;
+        color: #13315c;
+        cursor: pointer;
+    }
+
+    .doc-indice-movil ul {
+        margin-top: 0.5rem;
+        columns: 2;
+    }
+
+    .doc-indice-movil li a {
+        display: inline-block;
+        padding: 0.2rem 0;
+        font-size: 0.9rem;
+    }
+
+/* ===== Contenido ===== */
+
+.doc-contenido {
+    min-width: 0; /* que las tablas y el código no ensanchen la columna */
+}
+
+.doc-seccion {
+    background-color: #fff;
+    border: 1px solid #dfe5ec;
+    border-radius: 0.85rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    scroll-margin-top: calc(var(--alto-encabezado, 0px) + 1rem);
+}
+
+    .doc-seccion h2 {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #0b2239;
+        margin-bottom: 0.9rem;
+    }
+
+    .doc-seccion h3 {
+        font-size: 1.02rem;
+        font-weight: 700;
+        color: #13315c;
+        margin-top: 1.25rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .doc-seccion code {
+        color: #a5285b;
+        overflow-wrap: anywhere;
+    }
+
+/* Datos de conexión */
+
+.doc-conexion {
+    border: 1px solid #dfe5ec;
+    border-radius: 0.6rem;
+    overflow: hidden;
+}
+
+.doc-conexion-fila {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+}
+
+    .doc-conexion-fila + .doc-conexion-fila {
+        border-top: 1px solid #edf1f5;
+    }
+
+.doc-conexion-etiqueta {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #5a6b7d;
+}
+
+.doc-conexion-valor {
+    min-width: 0;
+}
+
+    .doc-conexion-valor code {
+        font-size: 0.88rem;
+        color: #0b2239;
+        word-break: break-all;
+    }
+
+.doc-conexion-nota {
+    display: block;
+    font-size: 0.78rem;
+    color: #5a6b7d;
+}
+
+/* Pasos */
+
+.doc-pasos {
+    padding-left: 1.25rem;
+}
+
+    .doc-pasos li {
+        margin-bottom: 0.5rem;
+    }
+
+.doc-paso {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.doc-paso-numero {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: #13315c;
+    color: #fff;
+    font-weight: 700;
+}
+
+.doc-paso-cuerpo {
+    flex: 1;
+    min-width: 0;
+}
+
+    .doc-paso-cuerpo h3 {
+        margin-top: 0.25rem;
+    }
+
+/* Tablas */
+
+.doc-tabla {
+    font-size: 0.9rem;
+}
+
+    .doc-tabla th {
+        color: #5a6b7d;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .doc-tabla td:first-child {
+        white-space: nowrap;
+    }
+
+.doc-tarjeta-codigos {
+    height: 100%;
+    border: 1px solid #dfe5ec;
+    border-radius: 0.6rem;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+}
+
+    .doc-tarjeta-codigos h3 {
+        margin-top: 0;
+        font-size: 0.95rem;
+    }
+
+        .doc-tarjeta-codigos h3 small {
+            font-weight: 400;
+            font-size: 0.8rem;
+        }
+
+.doc-codigo {
+    width: 4.5rem;
+    font-family: var(--bs-font-monospace);
+    font-weight: 700;
+    color: #13315c;
+    white-space: nowrap;
+}
+
+@media (max-width: 575.98px) {
+    .doc-cabecera {
+        padding: 1.75rem 1.25rem;
+    }
+
+    .doc-seccion {
+        padding: 1.1rem;
+    }
+
+    .doc-conexion-fila {
+        grid-template-columns: 1fr auto;
+    }
+
+    .doc-conexion-etiqueta {
+        grid-column: 1 / -1;
+    }
+
+    .doc-paso {
+        gap: 0.6rem;
+    }
+}

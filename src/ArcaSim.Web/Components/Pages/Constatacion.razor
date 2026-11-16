@@ -9,33 +9,34 @@
     Verificá si una factura electrónica y su CAE son válidos en ARCA ingresando la URL de su código QR o los datos del comprobante.
 </p>
 
-@if (!string.IsNullOrWhiteSpace(_errorComunicacion))
-{
-    <div class="alert alert-danger">@_errorComunicacion</div>
-}
+@* Los botones están al pie de cada tarjeta: el resultado se trae a la vista al aparecer. *@
+<AvisoMensaje Mensaje="_errorComunicacion" AlCerrar="() => _errorComunicacion = null" />
 
 @if (_resultado is not null)
 {
-    <div class="alert @(_resultado.EsValido ? "alert-success" : "alert-danger") shadow-sm mb-4">
-        <h5 class="alert-heading mb-1">
-            @(_resultado.EsValido ? "Comprobante Válido y Constatado en ARCA" : "Comprobante NO Válido")
-        </h5>
-        <p class="mb-0">@_resultado.Mensaje</p>
+    <Aviso Clave="_resultado">
+        <div class="alert @(_resultado.EsValido ? "alert-success" : "alert-danger") shadow-sm mb-4"
+             role="@(_resultado.EsValido ? "status" : "alert")">
+            <h5 class="alert-heading mb-1">
+                @(_resultado.EsValido ? "Comprobante Válido y Constatado en ARCA" : "Comprobante NO Válido")
+            </h5>
+            <p class="mb-0">@_resultado.Mensaje</p>
 
-        @if (_resultado.EsValido && _resultado.Comprobante is not null)
-        {
-            var c = _resultado.Comprobante;
-            <hr />
-            <div class="row g-2 small">
-                <div class="col-md-4"><strong>CUIT Emisor:</strong> <span class="font-monospace text-dark fw-semibold">@c.CuitEmisor</span></div>
-                <div class="col-md-4"><strong>Comprobante:</strong> @c.TipoComprobanteDescripcion N° <span class="font-monospace text-dark fw-semibold">@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</span></div>
-                <div class="col-md-4"><strong>Fecha Emisión:</strong> @c.Fecha.ToString("dd/MM/yyyy")</div>
-                <div class="col-md-4"><strong>Receptor:</strong> Doc. @c.TipoDocumentoReceptor — <span class="font-monospace text-dark fw-semibold">@c.NumeroDocumentoReceptor</span></div>
-                <div class="col-md-4"><strong>Importe Total:</strong> $ @c.ImporteTotal.ToString("N2") (@c.Moneda)</div>
-                <div class="col-md-4"><strong>CAE:</strong> <span class="font-monospace text-dark fw-semibold">@c.Cae</span> (Vto: @c.FechaVencimientoCae?.ToString("dd/MM/yyyy"))</div>
-            </div>
-        }
-    </div>
+            @if (_resultado.EsValido && _resultado.Comprobante is not null)
+            {
+                var c = _resultado.Comprobante;
+                <hr />
+                <div class="row g-2 small">
+                    <div class="col-md-4"><strong>CUIT Emisor:</strong> <span class="font-monospace text-dark fw-semibold">@c.CuitEmisor</span></div>
+                    <div class="col-md-4"><strong>Comprobante:</strong> @c.TipoComprobanteDescripcion N° <span class="font-monospace text-dark fw-semibold">@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</span></div>
+                    <div class="col-md-4"><strong>Fecha Emisión:</strong> @c.Fecha.ToString("dd/MM/yyyy")</div>
+                    <div class="col-md-4"><strong>Receptor:</strong> Doc. @c.TipoDocumentoReceptor — <span class="font-monospace text-dark fw-semibold">@c.NumeroDocumentoReceptor</span></div>
+                    <div class="col-md-4"><strong>Importe Total:</strong> $ @c.ImporteTotal.ToString("N2") (@c.Moneda)</div>
+                    <div class="col-md-4"><strong>CAE:</strong> <span class="font-monospace text-dark fw-semibold">@c.Cae</span> (Vto: @c.FechaVencimientoCae?.ToString("dd/MM/yyyy"))</div>
+                </div>
+            }
+        </div>
+    </Aviso>
 }
 
 <div class="row g-4">
@@ -130,7 +131,7 @@
     };
 
     private bool _verificando;
-    private string? _errorComunicacion;
+    private Mensaje? _errorComunicacion;
     private ConstatacionResponse? _resultado;
 
     protected override async Task OnInitializedAsync()
@@ -156,7 +157,7 @@
             });
 
             if (err is not null)
-                _errorComunicacion = err;
+                _errorComunicacion = Mensaje.Error(err);
             else
                 _resultado = res;
         }
@@ -178,7 +179,7 @@
             var (res, err) = await Api.ConstatarComprobanteAsync(_datosManuales);
 
             if (err is not null)
-                _errorComunicacion = err;
+                _errorComunicacion = Mensaje.Error(err);
             else
                 _resultado = res;
         }

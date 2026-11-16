@@ -6,6 +6,8 @@
 
 /* Sitio público (sin sesión) */
 .publico {
+    /* Alto del encabezado fijo (EncabezadoPublico): lo usan las páginas para no quedar debajo de él. */
+    --alto-encabezado: 6rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;

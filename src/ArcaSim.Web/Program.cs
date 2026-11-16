@@ -33,6 +33,9 @@ builder.Services.AddHttpClient<ArcaSimApiCliente>(client =>
     client.BaseAddress = new Uri(apiUrlBase.TrimEnd('/') + "/");
 });
 
+// Dirección pública del web service SOAP, para la documentación (Api:UrlPublica o, si no está, Api:UrlBase).
+builder.Services.AddSingleton<DireccionesWebService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

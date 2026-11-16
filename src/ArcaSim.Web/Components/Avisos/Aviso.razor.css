@@ -1,0 +1,37 @@
+.aviso {
+    border-radius: var(--bs-border-radius-lg, 0.5rem);
+    animation: aviso-aparece 0.35s ease-out, aviso-resalta 1.2s ease-out 0.2s;
+}
+
+    /* El foco se le pasa para los lectores de pantalla; la animación ya lo marca a la vista. */
+    .aviso:focus {
+        outline: none;
+    }
+
+@keyframes aviso-aparece {
+    from {
+        opacity: 0;
+        transform: translateY(-0.4rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes aviso-resalta {
+    from {
+        box-shadow: 0 0 0 0 rgba(27, 110, 194, 0.45);
+    }
+
+    to {
+        box-shadow: 0 0 0 0.75rem rgba(27, 110, 194, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aviso {
+        animation: none;
+    }
+}

@@ -1,0 +1,30 @@
+.pestanas-codigo {
+    margin-bottom: 1rem;
+}
+
+.pestanas-codigo-barra {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-bottom: 0.4rem;
+}
+
+.pestana {
+    border: 1px solid #c9d6e3;
+    background-color: #fff;
+    color: #13315c;
+    border-radius: 999px;
+    padding: 0.2rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+    .pestana:hover {
+        border-color: #1b6ec2;
+    }
+
+    .pestana.active {
+        background-color: #13315c;
+        border-color: #13315c;
+        color: #fff;
+    }
