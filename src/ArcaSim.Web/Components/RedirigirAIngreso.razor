@@ -1,0 +1,11 @@
+@inject NavigationManager Navigation
+
+@* Página que pide sesión, abierta sin sesión: se va al ingreso y después se vuelve acá. *@
+
+@code {
+    protected override void OnInitialized()
+    {
+        var volverA = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo($"ingresar?returnUrl={Uri.EscapeDataString(volverA)}", forceLoad: true);
+    }
+}

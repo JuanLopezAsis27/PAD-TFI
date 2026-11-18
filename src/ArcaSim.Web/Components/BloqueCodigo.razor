@@ -1,0 +1,23 @@
+@*
+    Bloque de código con el botón "Copiar". El botón lo atiende portal.js (data-copiar), así funciona
+    también en las páginas que se renderizan sin interactividad, como la documentación.
+*@
+
+<div class="bloque-codigo" data-bloque-codigo>
+    <div class="bloque-codigo-barra">
+        <span class="bloque-codigo-titulo">@Titulo</span>
+        <button type="button" class="btn-copiar" data-copiar title="Copiar al portapapeles">
+            <i class="bi bi-clipboard"></i> Copiar
+        </button>
+    </div>
+    <pre><code>@Codigo</code></pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Codigo { get; set; } = string.Empty;
+
+    /// <summary>Texto chico a la izquierda de la barra (por ejemplo, "XML" o "Python").</summary>
+    [Parameter]
+    public string? Titulo { get; set; }
+}

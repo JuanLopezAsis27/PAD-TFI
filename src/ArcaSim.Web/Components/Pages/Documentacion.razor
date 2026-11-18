@@ -1,0 +1,454 @@
+@page "/documentacion"
+
+@*
+    Documentación pública del web service SOAP (WSFEv1) para los sistemas que se integran con ArcaSim.
+    Se renderiza sin interactividad (es texto): los botones "Copiar" y las pestañas los maneja portal.js.
+    Los datos, pedidos y ejemplos están en Documentacion.razor.cs.
+*@
+
+<PageTitle>Documentación del web service WSFEv1 · ArcaSim</PageTitle>
+
+<header class="doc-cabecera">
+    <span class="doc-etiqueta"><i class="bi bi-code-slash me-1"></i> Documentación para desarrolladores</span>
+    <h1 class="doc-titulo">Integrá tu sistema con el web service de factura electrónica</h1>
+    <p class="doc-bajada">
+        Tu sistema (un e-commerce, un punto de venta, un ERP) pide el <strong>CAE</strong> de sus comprobantes por
+        <strong>SOAP</strong>, con el mismo contrato que el <strong>WSFEv1 de ARCA</strong>: mismas operaciones, mismos
+        nombres de campos y mismo namespace. Lo único distinto es la autenticación: una <strong>API key</strong> que
+        generás en el portal.
+    </p>
+    <ul class="doc-datos-rapidos">
+        <li><i class="bi bi-diagram-3"></i> SOAP 1.1</li>
+        <li><i class="bi bi-list-check"></i> @Operaciones.Length operaciones</li>
+        <li><i class="bi bi-key"></i> API key en el objeto <code>Auth</code></li>
+        <li><i class="bi bi-lightning-charge"></i> CAE al instante</li>
+    </ul>
+</header>
+
+<div class="row g-4">
+    <aside class="col-lg-3">
+        @* En pantallas chicas el índice se pliega; en grandes queda fijo al costado. *@
+        <details class="doc-indice-movil d-lg-none">
+            <summary>En esta página</summary>
+            <ul>
+                @foreach (var s in Indice)
+                {
+                    <li><a href="documentacion#@s.Id">@s.Titulo</a></li>
+                }
+            </ul>
+        </details>
+
+        <nav class="doc-indice d-none d-lg-block" aria-label="Secciones de la documentación">
+            <div class="doc-indice-titulo">En esta página</div>
+            <ul>
+                @foreach (var s in Indice)
+                {
+                    <li><a href="documentacion#@s.Id">@s.Titulo</a></li>
+                }
+            </ul>
+            <a href="ingresar" class="btn btn-primary btn-sm w-100 mt-3">
+                <i class="bi bi-key me-1"></i> Generar mi API key
+            </a>
+        </nav>
+    </aside>
+
+    <div class="col-lg-9 doc-contenido">
+
+        @* ===== Conexión ===== *@
+        <section id="conexion" class="doc-seccion">
+            <h2>Datos de conexión</h2>
+            <p>Todas las operaciones usan la misma dirección; cambia el <code>SOAPAction</code> y el cuerpo del pedido.</p>
+
+            <div class="doc-conexion">
+                @foreach (var (etiqueta, valor, nota) in DatosConexion)
+                {
+                    <div class="doc-conexion-fila" data-bloque-codigo>
+                        <span class="doc-conexion-etiqueta">@etiqueta</span>
+                        <span class="doc-conexion-valor">
+                            <code>@valor</code>
+                            @if (nota is not null)
+                            {
+                                <span class="doc-conexion-nota">@nota</span>
+                            }
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-copiar title="Copiar @etiqueta">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="alert alert-info d-flex gap-2 small mt-3 mb-0">
+                <i class="bi bi-lightbulb flex-shrink-0"></i>
+                <div>
+                    Para probarlo, abrí el <a href="@UrlWsdl" target="_blank" rel="noopener" class="alert-link">WSDL</a> en el
+                    navegador o importalo en SoapUI o Postman. <code>FEDummy</code> no pide autenticación: sirve para ver que
+                    el servicio responde.
+                </div>
+            </div>
+        </section>
+
+        @* ===== Alta ===== *@
+        <section id="alta" class="doc-seccion">
+            <h2>1. Alta en el portal (una sola vez)</h2>
+            <p>Como en ARCA, antes de facturar desde tu sistema tenés que dar de alta al emisor:</p>
+
+            <ol class="doc-pasos">
+                <li>
+                    <strong>Obtené tu Clave Fiscal.</strong> La obtiene una persona humana con su CUIT/CUIL; validamos la
+                    identidad con RENAPER. <a href="registro">Obtener Clave Fiscal</a>.
+                </li>
+                <li>
+                    <strong>Ingresá e inscribite como contribuyente</strong>, o da de alta la persona jurídica que factura
+                    (tu cuenta queda como su representante). Se hace en <em>Mis contribuyentes</em>.
+                </li>
+                <li>
+                    <strong>Habilitá un punto de venta.</strong> Cada uno lleva su propia numeración correlativa por tipo de
+                    comprobante.
+                </li>
+                <li>
+                    <strong>Generá la API key</strong> del contribuyente con <em>Generar / Regenerar API Key</em>. Se muestra
+                    <strong>una sola vez</strong>: guardala. Si la regenerás, la anterior deja de funcionar.
+                </li>
+            </ol>
+
+            <div class="alert alert-warning d-flex gap-2 small mb-0">
+                <i class="bi bi-shield-lock flex-shrink-0"></i>
+                <div>
+                    La API key es un secreto, como una contraseña: usala desde el <strong>backend</strong> de tu sistema (en
+                    una variable de entorno o un gestor de secretos). Nunca la pongas en el navegador, en una app móvil ni en
+                    el repositorio.
+                </div>
+            </div>
+        </section>
+
+        @* ===== Autenticación ===== *@
+        <section id="autenticacion" class="doc-seccion">
+            <h2>2. Autenticación</h2>
+            <p>
+                Cada operación (salvo <code>FEDummy</code>) recibe el objeto <code>Auth</code>, el mismo que usa ARCA. En lugar
+                del ticket del WSAA, en <code>Token</code> va tu API key y <code>Sign</code> queda vacío:
+            </p>
+
+            <BloqueCodigo Codigo="@XmlAuth" Titulo="XML" />
+
+            <div class="table-responsive">
+                <table class="table table-sm doc-tabla">
+                    <thead>
+                        <tr><th>Campo</th><th>Tipo</th><th>Qué va</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>Token</code></td><td>string</td><td>La API key generada en el portal.</td></tr>
+                        <tr><td><code>Sign</code></td><td>string</td><td>Vacío. Si tiene algo, se responde el error 600.</td></tr>
+                        <tr><td><code>Cuit</code></td><td>long</td><td>La CUIT del emisor, la misma para la que generaste la API key (11 dígitos, sin guiones).</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="mb-0">
+                Si la API key no existe o fue revocada, la respuesta trae el error <strong>600</strong>; si la CUIT no es la de
+                esa API key, el <strong>601</strong> (ver <a href="documentacion#errores">Errores</a>). Como el contrato es el
+                de ARCA, cuando se agregue el WSAA no vas a tener que cambiar tus llamadas: solo de dónde salen
+                <code>Token</code> y <code>Sign</code>.
+            </p>
+        </section>
+
+        @* ===== Flujo ===== *@
+        <section id="flujo" class="doc-seccion">
+            <h2>3. Emitir una factura, paso a paso</h2>
+            <p>
+                Los ejemplos piden el CAE de una <strong>Factura B</strong> (tipo 6) del punto de venta 1, a un consumidor final,
+                por <strong>$121</strong> (neto $100 + IVA 21 % $21). Los pedidos y las respuestas son reales.
+            </p>
+
+            <div class="doc-paso">
+                <span class="doc-paso-numero">1</span>
+                <div class="doc-paso-cuerpo">
+                    <h3><code>FECompUltimoAutorizado</code>: ¿qué número sigue?</h3>
+                    <p>
+                        La numeración es correlativa por punto de venta y tipo de comprobante. Pedí el último autorizado: el
+                        próximo es <code>CbteNro + 1</code> (si nunca emitiste, <code>CbteNro</code> es 0).
+                    </p>
+                    <PestanasCodigo Pestanas="PasoUltimo" />
+                </div>
+            </div>
+
+            <div class="doc-paso">
+                <span class="doc-paso-numero">2</span>
+                <div class="doc-paso-cuerpo">
+                    <h3><code>FECAESolicitar</code>: pedí el CAE</h3>
+                    <p>
+                        Mandá el comprobante con ese número en <code>CbteDesde</code> y <code>CbteHasta</code>. Si pasa las
+                        validaciones, <code>Resultado</code> es <strong>A</strong> y la respuesta trae el <code>CAE</code> y su
+                        vencimiento (<code>CAEFchVto</code>). Si no, es <strong>R</strong> y los motivos vienen en
+                        <code>Errors</code>.
+                    </p>
+                    <PestanasCodigo Pestanas="PasoCae" />
+                    <p class="small text-muted mb-0">
+                        Un comprobante rechazado no usa el número: corregilo y volvé a mandarlo con el mismo.
+                    </p>
+                </div>
+            </div>
+
+            <div class="doc-paso">
+                <span class="doc-paso-numero">3</span>
+                <div class="doc-paso-cuerpo">
+                    <h3><code>FECompConsultar</code>: recuperá un comprobante (opcional)</h3>
+                    <p>
+                        Devuelve los datos y el CAE de un comprobante autorizado. Sirve, por ejemplo, si se cortó la conexión
+                        antes de recibir la respuesta de <code>FECAESolicitar</code>: consultá antes de volver a pedirlo.
+                    </p>
+                    <PestanasCodigo Pestanas="PasoConsultar" />
+                </div>
+            </div>
+
+            <div class="alert alert-success d-flex gap-2 small mb-0">
+                <i class="bi bi-receipt flex-shrink-0"></i>
+                <div>
+                    Guardá el CAE y su vencimiento junto con la factura: van impresos en ella y en su código QR. Quien la reciba
+                    puede verificarla en <a href="constatacion" class="alert-link">Constatar comprobante</a>, sin Clave Fiscal.
+                </div>
+            </div>
+        </section>
+
+        @* ===== Campos ===== *@
+        <section id="campos" class="doc-seccion">
+            <h2>Campos de <code>FECAESolicitar</code></h2>
+            <p>El pedido (<code>FeCAEReq</code>) tiene una cabecera y el detalle del comprobante. Los importes van con punto decimal.</p>
+
+            <h3>Cabecera: <code>FeCabReq</code></h3>
+            <div class="table-responsive">
+                <table class="table table-sm doc-tabla">
+                    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in CamposCabecera)
+                        {
+                            <tr><td><code>@c.Nombre</code></td><td class="text-nowrap">@c.Tipo</td><td>@c.Descripcion</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Detalle: <code>FeDetReq</code> → <code>FECAEDetRequest</code></h3>
+            <div class="table-responsive">
+                <table class="table table-sm doc-tabla">
+                    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in CamposDetalle)
+                        {
+                            <tr><td><code>@c.Nombre</code></td><td class="text-nowrap">@c.Tipo</td><td>@c.Descripcion</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Qué tipo de comprobante corresponde</h3>
+            <ul class="mb-0">
+                <li>
+                    <strong>Emisor responsable inscripto:</strong> clase <strong>A</strong> (1, 2, 3) a responsables inscriptos o
+                    monotributistas, con la CUIT del receptor; clase <strong>B</strong> (6, 7, 8) a consumidores finales y exentos.
+                    En los dos casos se discrimina el IVA en <code>Iva</code>.
+                </li>
+                <li>
+                    <strong>Emisor monotributista o exento:</strong> clase <strong>C</strong> (11, 12, 13). Sin bloque
+                    <code>Iva</code>, con <code>ImpIVA</code>, <code>ImpTotConc</code> e <code>ImpOpEx</code> en 0: el total va en
+                    <code>ImpNeto</code>.
+                </li>
+            </ul>
+        </section>
+
+        @* ===== Operaciones ===== *@
+        <section id="operaciones" class="doc-seccion">
+            <h2>Operaciones</h2>
+            <p>
+                Todas usan el namespace <code>@Namespace</code> y el <code>SOAPAction</code> es el namespace más el nombre de la
+                operación.
+            </p>
+            <div class="table-responsive">
+                <table class="table table-sm doc-tabla">
+                    <thead><tr><th>Operación</th><th>Para qué sirve</th><th>Parámetros (además de Auth)</th></tr></thead>
+                    <tbody>
+                        @foreach (var o in Operaciones)
+                        {
+                            <tr>
+                                <td>
+                                    <code>@o.Nombre</code>
+                                    @if (!o.PideAuth)
+                                    {
+                                        <span class="badge text-bg-light border ms-1">sin Auth</span>
+                                    }
+                                </td>
+                                <td>@o.Para</td>
+                                <td>@o.Parametros</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        @* ===== Códigos ===== *@
+        <section id="codigos" class="doc-seccion">
+            <h2>Tablas de códigos</h2>
+            <p>Son los códigos de ARCA. También los podés pedir con las operaciones <code>FEParamGet*</code>.</p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="doc-tarjeta-codigos">
+                        <h3>Tipo de comprobante <small><code>CbteTipo</code></small></h3>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                @foreach (var (codigo, descripcion) in TiposComprobante)
+                                {
+                                    <tr><td class="doc-codigo">@codigo</td><td>@descripcion</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="doc-tarjeta-codigos">
+                        <h3>Condición IVA del receptor <small><code>CondicionIVAReceptorId</code></small></h3>
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Código</th><th>Condición</th><th>Clases</th></tr></thead>
+                            <tbody>
+                                @foreach (var (codigo, descripcion, clases) in CondicionesReceptor)
+                                {
+                                    <tr><td class="doc-codigo">@codigo</td><td>@descripcion</td><td class="text-nowrap">@clases</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="doc-tarjeta-codigos">
+                        <h3>Tipo de documento <small><code>DocTipo</code></small></h3>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                @foreach (var (codigo, descripcion) in TiposDocumento)
+                                {
+                                    <tr><td class="doc-codigo">@codigo</td><td>@descripcion</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="doc-tarjeta-codigos">
+                        <h3>Alícuota de IVA <small><code>AlicIva/Id</code></small></h3>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                @foreach (var (codigo, descripcion) in Alicuotas)
+                                {
+                                    <tr><td class="doc-codigo">@codigo</td><td>@descripcion</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="doc-tarjeta-codigos">
+                        <h3>Concepto <small><code>Concepto</code></small></h3>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                @foreach (var (codigo, descripcion) in Conceptos)
+                                {
+                                    <tr><td class="doc-codigo">@codigo</td><td>@descripcion</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="doc-tarjeta-codigos">
+                        <h3>Moneda <small><code>MonId</code></small></h3>
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr><td class="doc-codigo">PES</td><td>Pesos argentinos, con <code>MonCotiz</code> 1</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        @* ===== Errores ===== *@
+        <section id="errores" class="doc-seccion">
+            <h2>Errores</h2>
+            <p>
+                Los errores de autenticación y los rechazos no llegan como <em>SOAP Fault</em> sino como en ARCA: dentro
+                del resultado, en <code>Errors</code> → <code>Err</code>, con un <code>Code</code> y un <code>Msg</code>.
+                Revisalo siempre antes de leer el resto de la respuesta.
+            </p>
+
+            <BloqueCodigo Codigo="@RespuestaErrorAuth" Titulo="XML · API key inválida" />
+
+            <h3>Códigos de error</h3>
+            <div class="table-responsive">
+                <table class="table table-sm doc-tabla">
+                    <thead><tr><th>Code</th><th>Qué pasó</th><th>Qué hacer</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in ErroresGenerales)
+                        {
+                            <tr><td class="doc-codigo">@e.Codigo</td><td>@e.Significa</td><td>@e.QueHacer</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Rechazos frecuentes de <code>FECAESolicitar</code></h3>
+            <p>
+                Cuando el comprobante no pasa una regla, <code>Code</code> es 400 y el <code>Msg</code> empieza con el código
+                de ARCA, por ejemplo <code>10048: El importe total no coincide con la suma de los importes.</code> Puede venir
+                más de un <code>Err</code>.
+            </p>
+            <div class="table-responsive">
+                <table class="table table-sm doc-tabla mb-0">
+                    <thead><tr><th>Código en Msg</th><th>Qué pasó</th><th>Qué hacer</th></tr></thead>
+                    <tbody>
+                        @foreach (var e in RechazosFrecuentes)
+                        {
+                            <tr><td class="doc-codigo">@e.Codigo</td><td>@e.Significa</td><td>@e.QueHacer</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        @* ===== Clientes ===== *@
+        <section id="clientes" class="doc-seccion">
+            <h2>Ejemplos de código</h2>
+            <p>
+                Programas completos que piden el próximo número y después el CAE. Leen la API key de la variable de entorno
+                <code>ARCASIM_API_KEY</code> y ya apuntan a este servidor. En otros lenguajes sirve cualquier cliente SOAP 1.1
+                que lea el WSDL, o un POST con el XML, como en el ejemplo de curl.
+            </p>
+            <PestanasCodigo Pestanas="Clientes" />
+        </section>
+
+        @* ===== Diferencias ===== *@
+        <section id="diferencias" class="doc-seccion">
+            <h2>Diferencias con ARCA</h2>
+            <p>ArcaSim implementa la parte del WSFEv1 que se usa para facturar. Por ahora:</p>
+            <ul>
+                <li>Se autentica con <strong>API key</strong> en <code>Auth/Token</code>, no con el ticket de acceso del WSAA (certificado y <code>loginCms</code>).</li>
+                <li>Se autoriza <strong>un comprobante por pedido</strong>: <code>CantReg</code> es 1 y <code>FECompTotXRequest</code> devuelve 1.</li>
+                <li>Todavía no se aceptan comprobantes asociados (<code>CbtesAsoc</code>), tributos (<code>Tributos</code>; <code>ImpTrib</code> en 0) ni campos opcionales (<code>Opcionales</code>).</li>
+                <li>No hay CAEA ni todas las tablas de parámetros: las monedas son solo <code>PES</code> y las condiciones IVA del receptor, las de la tabla de arriba.</li>
+            </ul>
+            <div class="alert alert-secondary d-flex gap-2 small mb-0">
+                <i class="bi bi-mortarboard flex-shrink-0"></i>
+                <div>
+                    ArcaSim es un simulador académico: los CAE que entrega no tienen validez fiscal. Para la referencia completa
+                    del servicio real, ver el
+                    <a href="https://www.afip.gob.ar/ws/documentacion/manuales/manual-desarrollador-ARCA-COMPG.pdf" target="_blank" rel="noopener" class="alert-link">manual del desarrollador de ARCA</a>.
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

@@ -4,9 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>7389860c-1516-4747-9bbc-7645fcdc4054</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -14,9 +16,12 @@
     </PackageReference>
     <PackageReference Include="Scalar.AspNetCore" Version="2.18.3" />
     <PackageReference Include="SoapCore" Version="1.2.1.18" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ArcaSim.Contratos\ArcaSim.Contratos.csproj" />
     <ProjectReference Include="..\ArcaSim.Infraestructura\ArcaSim.Infraestructura.csproj" />
   </ItemGroup>
 

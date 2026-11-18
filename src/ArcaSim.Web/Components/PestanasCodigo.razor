@@ -1,0 +1,33 @@
+@*
+    Varios bloques de código en pestañas (por ejemplo, el pedido y la respuesta, o el mismo cliente en
+    distintos lenguajes). Las pestañas las cambia portal.js (data-pestanas), sin interactividad de Blazor.
+    Sin JavaScript se ve la primera.
+*@
+
+<div class="pestanas-codigo" data-pestanas>
+    <div class="pestanas-codigo-barra" role="tablist">
+        @for (int i = 0; i < Pestanas.Count; i++)
+        {
+            int indice = i;
+            <button type="button" role="tab" class="pestana @(indice == 0 ? "active" : null)"
+                    aria-selected="@(indice == 0 ? "true" : "false")" data-pestana="@indice">
+                @Pestanas[indice].Titulo
+            </button>
+        }
+    </div>
+
+    @for (int i = 0; i < Pestanas.Count; i++)
+    {
+        int indice = i;
+        <div role="tabpanel" data-panel="@indice" hidden="@(indice != 0)">
+            <BloqueCodigo Codigo="@Pestanas[indice].Codigo" Titulo="@Pestanas[indice].Lenguaje" />
+        </div>
+    }
+</div>
+
+@code {
+    public sealed record Pestana(string Titulo, string Codigo, string Lenguaje = "XML");
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Pestana> Pestanas { get; set; } = [];
+}

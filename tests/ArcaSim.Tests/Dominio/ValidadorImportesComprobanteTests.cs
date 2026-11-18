@@ -1,0 +1,119 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using ArcaSim.Dominio.Entidades;
+using ArcaSim.Dominio.Enums;
+using ArcaSim.Dominio.Reglas;
+
+namespace ArcaSim.Tests.Dominio;
+
+public class ValidadorImportesComprobanteTests
+{
+    private static Comprobante CrearComprobanteValido()
+    {
+        return new Comprobante
+        {
+            ImporteNeto = 100000m,
+            ImporteNoGravado = 0m,
+            ImporteExento = 0m,
+            ImporteIVA = 21000m,
+            ImporteTributos = 0m,
+            ImporteTotal = 121000m
+        };
+    }
+
+    [Fact]
+    public void Validar_ImportesNoNegativos_NoDevuelveErrores()
+    {
+        var comprobante = CrearComprobanteValido();
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+        Assert.Empty(errores);
+    }
+
+    [Theory]
+    [InlineData("neto", "10045")]
+    [InlineData("noGravado", "10043")]
+    [InlineData("exento", "10044")]
+    [InlineData("tributos", "10046")]
+    [InlineData("iva", "10047")]
+    public void Validar_ImporteNegativo_DevuelveErrorCorrespondiente(string campo, string codigoEsperado)
+    {
+        var comprobante = CrearComprobanteValido();
+
+        switch (campo)
+        {
+            case "neto":
+                comprobante.ImporteNeto = -1m;
+                break;
+            case "noGravado":
+                comprobante.ImporteNoGravado = -1m;
+                break;
+            case "exento":
+                comprobante.ImporteExento = -1m;
+                break;
+            case "tributos":
+                comprobante.ImporteTributos = -1m;
+                break;
+            case "iva":
+                comprobante.ImporteIVA = -1m;
+                break;
+        }
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+        Assert.Contains(errores, error => error.codigo == codigoEsperado);
+    }
+
+    [Theory]
+    [InlineData("noGravado", "10043")]
+    [InlineData("exento", "10044")]
+    [InlineData("iva", "10047")]
+    public void Validar_ComprobanteCConImporteDistintoDeCero_DevuelveErrorCorrespondiente(string campo,
+        string codigoEsperado)
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaC;
+        comprobante.ImporteIVA = 0m;
+
+        switch (campo)
+        {
+            case "noGravado":
+                comprobante.ImporteNoGravado = 500m;
+                break;
+            case "exento":
+                comprobante.ImporteExento = 500m;
+                break;
+            case "iva":
+                comprobante.ImporteIVA = 500m;
+                break;
+        }
+
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+        var error = Assert.Single(errores);
+        Assert.Equal(codigoEsperado, error.codigo);
+    }
+
+    [Fact]
+    public void Validar_ComprobanteCConImporteNegativo_DevuelveUnSoloError()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaC;
+        comprobante.ImporteIVA = -1m;
+
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+
+        var error = Assert.Single(errores);
+        Assert.Equal("10047", error.codigo);
+    }
+
+    [Fact]
+    public void Validar_ComprobanteBConExentoYNoGravado_NoDevuelveErrores()
+    {
+        var comprobante = CrearComprobanteValido();
+        comprobante.Tipo = TipoComprobante.FacturaB;
+        comprobante.ImporteExento = 500m;
+        comprobante.ImporteNoGravado = 300m;
+
+        var errores = ValidadorImportesComprobante.Validar(comprobante);
+
+        Assert.Empty(errores);
+    }
+}

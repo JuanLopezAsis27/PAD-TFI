@@ -1,23 +1,41 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@*
+    Con sesión: el portal con el menú lateral. Sin sesión: el sitio público, sin menú lateral, como la
+    portada de ARCA (encabezado con "Ingresar", contenido y pie).
+*@
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+<AuthorizeView>
+    <Authorized>
+        <div class="page">
+            <div class="sidebar">
+                <NavMenu />
+            </div>
+
+            <main>
+                <article class="content px-4 pt-4 pb-5">
+                    @Body
+                </article>
+            </main>
         </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="publico">
+            <EncabezadoPublico />
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+            <main class="publico-contenido">
+                <div class="container-xl py-4">
+                    @Body
+                </div>
+            </main>
+
+            <PiePublico />
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    Ocurrió un error inesperado en la aplicación.
+    <a href="." class="reload">Recargar</a>
     <span class="dismiss">🗙</span>
 </div>

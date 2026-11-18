@@ -1,0 +1,211 @@
+@page "/ingresar"
+@layout LayoutAcceso
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject ArcaSimApiCliente Api
+@inject NavigationManager Navigation
+
+@*
+    Se renderiza en el servidor sin interactividad (SSR estático) porque al ingresar tiene que escribir la
+    cookie de sesión. Los formularios no usan "Enhance": así el ingreso recarga la página completa y el
+    resto del portal arranca con la sesión nueva.
+*@
+
+<PageTitle>Ingresar con Clave Fiscal · ArcaSim</PageTitle>
+
+<div class="card shadow-sm tarjeta-acceso">
+    <div class="card-body p-4">
+        <h1 class="h4 mb-1">Ingresá con Clave Fiscal</h1>
+        <p class="text-muted small mb-4">Accedé a los servicios de facturación electrónica con tu CUIT/CUIL y tu clave.</p>
+
+        @if (Registrado == true && _error is null)
+        {
+            <div class="alert alert-success small">
+                <i class="bi bi-check-circle me-1"></i>
+                <strong>Tu Clave Fiscal fue creada.</strong> RENAPER validó tu identidad: ya podés ingresar.
+            </div>
+        }
+        else if (Salio == true && _error is null)
+        {
+            <div class="alert alert-secondary small">Cerraste tu sesión.</div>
+        }
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger small" role="alert">@_error</div>
+        }
+
+        @if (!_pasoClave)
+        {
+            <EditForm Model="PasoCuit" FormName="ingreso-cuit" method="post" OnValidSubmit="ContinuarConClave">
+                <DataAnnotationsValidator />
+
+                <label for="cuit" class="form-label fw-semibold">CUIT/CUIL</label>
+                <InputText id="cuit" class="form-control form-control-lg font-monospace" @bind-Value="PasoCuit!.Cuit"
+                           inputmode="numeric" maxlength="13" autocomplete="username" placeholder="Ej: 20401112228" autofocus />
+                <ValidationMessage For="() => PasoCuit!.Cuit" class="small" />
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">Siguiente</button>
+            </EditForm>
+        }
+        else
+        {
+            <EditForm Model="PasoClave" FormName="ingreso-clave" method="post" OnValidSubmit="IngresarAsync">
+                <DataAnnotationsValidator />
+                <input type="hidden" name="PasoClave.Cuit" value="@PasoClave!.Cuit" />
+
+                <div class="d-flex justify-content-between align-items-center bg-light border rounded px-3 py-2 mb-3">
+                    <span>
+                        <span class="text-muted small d-block">CUIT/CUIL</span>
+                        <span class="font-monospace fw-semibold">@PasoClave.Cuit</span>
+                    </span>
+                    <a href="@_urlCambiarCuit" class="small">Cambiar</a>
+                </div>
+
+                <label for="clave" class="form-label fw-semibold">Tu clave</label>
+                <InputText id="clave" type="password" class="form-control form-control-lg" @bind-Value="PasoClave.Clave"
+                           autocomplete="current-password" autofocus />
+                <ValidationMessage For="() => PasoClave.Clave" class="small" />
+
+                <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">Ingresar</button>
+            </EditForm>
+        }
+
+        <hr class="my-4" />
+        <p class="small mb-0">
+            ¿No tenés Clave Fiscal? <a href="registro" class="fw-semibold">Obtenela acá</a>.
+            Validamos tu identidad con RENAPER.
+        </p>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery(Name = "cuit")]
+    private string? CuitInicial { get; set; }
+
+    [SupplyParameterFromQuery(Name = "registrado")]
+    private bool? Registrado { get; set; }
+
+    [SupplyParameterFromQuery(Name = "salio")]
+    private bool? Salio { get; set; }
+
+    [SupplyParameterFromForm(FormName = "ingreso-cuit")]
+    private ModeloCuit? PasoCuit { get; set; }
+
+    [SupplyParameterFromForm(FormName = "ingreso-clave")]
+    private ModeloClave? PasoClave { get; set; }
+
+    private bool _pasoClave;
+    private string? _error;
+    private string _urlCambiarCuit = "ingresar";
+
+    protected override void OnInitialized()
+    {
+        // En un POST, el formulario que no se envió llega en null.
+        PasoCuit ??= new ModeloCuit();
+        PasoClave ??= new ModeloClave();
+
+        _urlCambiarCuit = string.IsNullOrEmpty(ReturnUrl)
+            ? "ingresar"
+            : $"ingresar?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+        bool esEnvio = HttpMethods.IsPost(HttpContext?.Request.Method ?? string.Empty);
+
+        // Si ya hay sesión, no tiene sentido volver a ingresar.
+        if (!esEnvio && HttpContext?.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(DestinoSeguro(ReturnUrl));
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(PasoClave.Cuit))
+        {
+            // Se envió el segundo paso (la CUIT viaja en el campo oculto).
+            _pasoClave = true;
+        }
+        else if (!esEnvio && NormalizarCuit(CuitInicial) is { } cuit)
+        {
+            // Viene del registro o de la portada con la CUIT: pasa directo a la clave.
+            PasoClave.Cuit = cuit;
+            _pasoClave = true;
+        }
+        else if (!esEnvio && !string.IsNullOrWhiteSpace(CuitInicial))
+        {
+            // CUIT mal escrita: queda en el primer paso para corregirla.
+            PasoCuit.Cuit = CuitInicial.Trim();
+            _error = "La CUIT/CUIL tiene 11 dígitos (con o sin guiones).";
+        }
+    }
+
+    private void ContinuarConClave()
+    {
+        PasoClave = new ModeloClave { Cuit = NormalizarCuit(PasoCuit!.Cuit) ?? string.Empty };
+        _pasoClave = true;
+    }
+
+    private async Task IngresarAsync()
+    {
+        var (sesion, error) = await Api.IniciarSesionAsync(new IniciarSesionRequest
+        {
+            Cuit = PasoClave!.Cuit,
+            Clave = PasoClave.Clave
+        });
+
+        if (sesion is null)
+        {
+            _error = error ?? "No se pudo ingresar.";
+            PasoClave.Clave = string.Empty;
+            return;
+        }
+
+        await HttpContext!.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            ClaimsSesion.Crear(sesion),
+            new AuthenticationProperties
+            {
+                IsPersistent = false,
+                ExpiresUtc = sesion.Expira,
+                AllowRefresh = false
+            });
+
+        Navigation.NavigateTo(DestinoSeguro(ReturnUrl));
+    }
+
+    /// <summary>Solo se vuelve a direcciones del portal, nunca a otro sitio (open redirect).</summary>
+    private static string DestinoSeguro(string? url)
+    {
+        bool esLocal = !string.IsNullOrEmpty(url) && url.StartsWith('/') &&
+            !url.StartsWith("//", StringComparison.Ordinal) && !url.StartsWith("/\\", StringComparison.Ordinal);
+
+        return esLocal && !url!.StartsWith("/ingresar", StringComparison.OrdinalIgnoreCase) ? url : "/";
+    }
+
+    /// <summary>Acepta la CUIT con o sin guiones; devuelve los 11 dígitos o null.</summary>
+    private static string? NormalizarCuit(string? cuit)
+    {
+        var digitos = (cuit ?? string.Empty).Replace("-", string.Empty).Trim();
+        return digitos.Length == 11 && digitos.All(char.IsAsciiDigit) ? digitos : null;
+    }
+
+    private sealed class ModeloCuit
+    {
+        [Required(ErrorMessage = "Ingresá tu CUIT/CUIL.")]
+        [RegularExpression(@"^\s*\d{2}-?\d{8}-?\d\s*$", ErrorMessage = "La CUIT/CUIL tiene 11 dígitos (con o sin guiones).")]
+        public string Cuit { get; set; } = string.Empty;
+    }
+
+    private sealed class ModeloClave
+    {
+        public string Cuit { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Ingresá tu clave.")]
+        public string Clave { get; set; } = string.Empty;
+    }
+}

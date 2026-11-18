@@ -1,16 +1,43 @@
+
+using ArcaSim.Dominio.Entidades;
+using ArcaSim.Infraestructura.Persistencia.Entidades;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArcaSim.Infraestructura.Persistencia;
 
 /// <summary>
 /// Contexto de EF Core sobre PostgreSQL.
-/// TODO: agregar los DbSet de las entidades del dominio (Comprobante, PuntoVenta, Contribuyente, ...)
-/// y sus configuraciones en la carpeta Configuraciones/.
+/// El mapeo de cada entidad está en Configuraciones/.
 /// </summary>
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(
+    DbContextOptions<AppDbContext> options)
+    : DbContext(options)
 {
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    // Entidades del Rol 3.
+    public DbSet<Contribuyente> Contribuyentes =>
+        Set<Contribuyente>();
+
+    public DbSet<PuntoVenta> PuntosVenta =>
+        Set<PuntoVenta>();
+
+    public DbSet<Comprobante> Comprobantes =>
+        Set<Comprobante>();
+
+    // Cuentas de Clave Fiscal del portal y los contribuyentes que representa cada una.
+    public DbSet<Usuario> Usuarios =>
+        Set<Usuario>();
+
+    public DbSet<Representacion> Representaciones =>
+        Set<Representacion>();
+
+    // Seguridad SOAP del Rol 2.
+    public DbSet<ApiKeySoap> ApiKeysSoap =>
+        Set<ApiKeySoap>();
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(AppDbContext).Assembly);
     }
 }

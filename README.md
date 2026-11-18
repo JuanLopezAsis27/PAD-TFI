@@ -12,8 +12,8 @@ implementada
 
 | Integrante | Legajo | Email | Usuario de GitHub | Rol (ver [§8](#8-división-del-trabajo)) |
 |---|---|---|---|---|
-| _Nombre y apellido_ | | | | |
-| _Nombre y apellido_ | | | | |
+| Rodrigo Martín Ordoñez Nadra | 58366 | Rodrigo.OrdonezNadra@alu.frt.utn.edu.ar | RodriGB0510 | Rol 1 |
+| López Asis Juan Manuel | 53303 | juan.lopezasis27@hotmail.com | JuanLopezAsis27 | Rol 3 |
 | _Nombre y apellido_ | | | | |
 | _Nombre y apellido_ | | | | |
 
@@ -34,8 +34,8 @@ factura electrónica:
   CAE de sus facturas. Cualquiera puede además verificar una factura con nuestro servicio de
   constatación.
 - **Consumimos:** otro grupo hace una simulación de **RENAPER** (Registro Nacional de las
-  Personas). La usamos para validar la identidad de las personas que se registran como
-  contribuyentes y de los receptores de facturas identificados con DNI.
+  Personas). La usamos para validar la identidad de las personas humanas cuando obtienen su
+  Clave Fiscal en el portal (ver [docs/renaper.md](docs/renaper.md)).
 
 ---
 
@@ -87,8 +87,11 @@ receptor por DNI, primero se valida que la persona exista en el registro de iden
 
 **Mínimo (MVP):**
 
-1. **Contribuyentes y puntos de venta:** alta de emisores. Las personas humanas se validan contra
-   **RENAPER** (DNI → nombre y apellido) y se les calcula o valida la CUIT.
+1. **Clave Fiscal y contribuyentes:** como en ARCA, una persona humana obtiene su Clave Fiscal
+   (se valida la CUIT y, con **RENAPER**, que el nombre y el apellido correspondan al DNI de esa
+   CUIT y que tenga 18 años) e ingresa con CUIT/CUIL y clave. Después se inscribe como
+   contribuyente o da de alta las personas jurídicas que representa, con sus puntos de venta (ver
+   [docs/clave-fiscal.md](docs/clave-fiscal.md)).
 2. **Web service SOAP WSFEv1 igual al de ARCA** (mismo WSDL, namespace, operaciones y nombres de
    campos): `FEDummy` (ya implementado), `FECompUltimoAutorizado`, `FECAESolicitar`,
    `FECompConsultar` y algunos `FEParamGet*` (tablas de tipos de comprobante, IVA, etc.).
@@ -101,8 +104,9 @@ receptor por DNI, primero se valida que la persona exista en el registro de iden
    los errores, con los mismos códigos que ARCA.
 5. **Consultas:** último número autorizado y datos de un comprobante emitido.
 6. **Constatación pública:** verificar un comprobante por sus datos o por su **código QR**.
-7. **Portal web:** alta de contribuyentes, generación de la API key, emitir comprobantes a mano,
-   listarlos y constatarlos.
+7. **Portal web:** ingreso con Clave Fiscal, alta de contribuyentes, generación de la API key,
+   emitir comprobantes a mano, listarlos y constatarlos. Cada cuenta solo ve y opera los
+   contribuyentes que representa; la constatación es pública.
 8. **Facilidades para los otros grupos:**
    - Valores por defecto para los campos opcionales (moneda `PES`, cotización 1, fecha de hoy).
    - Un ejemplo de "pedido mínimo" documentado.
@@ -158,7 +162,8 @@ flowchart LR
 
 ### Cómo se integra otro grupo
 
-1. En el **portal**, dar de alta su contribuyente (CUIT ficticia) y un punto de venta.
+1. En el **portal**, obtener la Clave Fiscal e ingresar. Después, inscribirse como contribuyente
+   (o dar de alta la persona jurídica que factura) y habilitar un punto de venta.
 2. En el portal, **generar la API key** de ese contribuyente y guardarla en la configuración de su
    sistema. Es un secreto: se usa desde su **backend**, nunca desde el navegador.
 3. Llamar a `FECompUltimoAutorizado` para saber el próximo número de comprobante.
@@ -182,17 +187,30 @@ vacío valida la API key; con `Sign`, valida el Ticket de Acceso del WSAA.
 Errores de autenticación (mismos códigos que ARCA): **600** si la API key no es válida o fue
 revocada, y **601** si la CUIT del `Auth` no corresponde a esa API key.
 
-### Integración con RENAPER (a acordar con el otro grupo)
+La guía para los otros grupos está en el propio portal, sin iniciar sesión: **`/documentacion`**
+(datos de conexión, pedidos y respuestas reales, campos, tablas de códigos, errores y programas de
+ejemplo en C#, Python y Node.js). La dirección del servicio que muestra sale de `Api:UrlPublica` o,
+si no está, de `Api:UrlBase`; hay que configurar `Api__UrlPublica` cuando el portal llama a la API
+por una dirección interna (en Docker Compose, `http://api:8080`).
 
-Lo que necesitamos de su servicio, como mínimo:
+El **código QR** de los comprobantes lleva a la constatación del portal (`/fe/qr/?p=...`, la misma
+ruta que ARCA) y no a ARCA real, que no conoce los comprobantes del simulador. La API arma esa
+dirección con `Portal:UrlPublica`, la dirección pública del portal: en Development es
+`http://localhost:5247` y en Docker Compose se pasa con `Portal__UrlPublica`. Si falta, el QR lleva
+a ARCA real y la API lo avisa al arrancar. La constatación acepta las dos direcciones, porque un
+sistema que sigue la especificación de ARCA imprime la de ARCA.
 
-| Operación | Entrada | Salida esperada |
+### Integración con RENAPER
+
+Usamos el servicio **Renaper Validation** de otro grupo. No devuelve los datos de la persona: solo
+confirma si coinciden.
+
+| Operación | Entrada | Salida |
 |---|---|---|
-| Consultar persona | DNI (y sexo, si lo requieren) | Existe sí/no, nombre, apellido, fecha de nacimiento, si falleció |
+| `POST /api/v1/personas/validar` (API key en el header `X-API-Key`) | DNI, nombre, apellido, edad mínima | `datosCoinciden` y `cumpleEdadMinima` (sí/no) |
 
-La URL se configura en `src/ArcaSim.Api/appsettings.Development.json` → `Renaper:UrlBase`.
-El formato exacto (rutas, JSON, autenticación) hay que acordarlo con ese grupo y documentarlo en
-`docs/`.
+En desarrollo se usa un RENAPER simulado, sin red ni créditos. El contrato, la configuración, los
+errores y las personas de prueba están en [docs/renaper.md](docs/renaper.md).
 
 ---
 
@@ -220,7 +238,7 @@ El formato exacto (rutas, JSON, autenticación) hay que acordarlo con ese grupo 
 ```
 TFI-base/
 ├── ArcaSim.slnx                     Solución (Visual Studio 2026 / dotnet CLI)
-├── docker-compose.yml               PostgreSQL para desarrollo
+├── docker-compose.yml               PostgreSQL para desarrollo (y, con --profile app, API y portal)
 ├── docs/                            Diagramas, contrato con RENAPER, decisiones
 ├── src/
 │   ├── ArcaSim.Dominio/             Núcleo del negocio (sin dependencias)
@@ -284,17 +302,26 @@ salvo `FEDummy` reciben el objeto `Auth` con la API key.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/estado` | Estado del servicio (**implementado**) |
-| POST | `/api/contribuyentes` | Alta de contribuyente (persona humana validada con RENAPER) |
+| POST | `/api/cuenta/registro` | Obtener la Clave Fiscal: persona humana validada con RENAPER (público) |
+| POST | `/api/cuenta/login` | Ingresar con CUIT/CUIL y clave → JWT (público) |
+| GET | `/api/cuenta` | Datos de la cuenta con la que se ingresó |
+| GET | `/api/contribuyentes` | Contribuyentes que representa la cuenta |
+| POST | `/api/contribuyentes` | Inscribirse (persona humana) o dar de alta una persona jurídica representada |
 | POST | `/api/contribuyentes/{cuit}/puntos-venta` | Alta de punto de venta |
-| POST | `/api/contribuyentes/{cuit}/api-key` | Generar o regenerar la API key (se muestra una sola vez) |
+| POST | `/api/contribuyentes/{cuit}/api-key` | Generar o regenerar la API key del SOAP (se muestra una sola vez; la anterior queda revocada) |
 | GET | `/api/comprobantes?cuit=` | Listar comprobantes de un emisor |
 | POST | `/api/comprobantes` | Emisión manual desde el portal → CAE |
 | POST | `/api/constatacion` | Verificar un comprobante (público) |
+
+Salvo las marcadas como públicas, todas piden el JWT del ingreso (`Authorization: Bearer`) y
+responden 403 si la cuenta no representa al CUIT. Detalle en [docs/clave-fiscal.md](docs/clave-fiscal.md).
 
 ### Modelo de datos inicial (propuesto)
 
 | Tabla | Contenido principal |
 |---|---|
+| `Usuarios` | Cuentas de Clave Fiscal: CUIT/CUIL, nombre y apellido validados con RENAPER, email, **hash** de la clave, intentos fallidos y bloqueo |
+| `Representaciones` | Qué contribuyentes puede operar cada cuenta |
 | `Contribuyentes` | CUIT, nombre o razón social, tipo de persona, condición frente al IVA |
 | `ApiKeys` | CUIT, **hash** de la API key (nunca la clave en texto plano), fecha de creación, revocada sí/no |
 | `PuntosVenta` | CUIT, número, habilitado |
@@ -322,16 +349,45 @@ dotnet run --project src/ArcaSim.Web
 dotnet test
 ```
 
+También se puede levantar todo en contenedores (base, API y portal, en los mismos puertos), sin
+tener el SDK de .NET instalado:
+
+```bash
+docker compose --profile app up -d --build   # levantar (--build recompila si cambió el código)
+docker compose --profile app down            # bajar (los datos quedan en el volumen)
+```
+
 Para probar el SOAP: el archivo `src/ArcaSim.Api/ArcaSim.Api.http` trae un pedido `FEDummy` listo
 para ejecutar desde Visual Studio o VS Code (extensión REST Client). También sirven SoapUI y
 Postman.
 
-Cuando se agreguen entidades al `AppDbContext`, crear y aplicar las migraciones:
+### Base de datos y datos de prueba
+
+En desarrollo (y en Docker) la API, al iniciar, aplica las migraciones pendientes y carga datos de
+prueba. Se controla con la sección `BaseDeDatos` de `appsettings.Development.json`; en producción
+las dos opciones vienen apagadas. Los datos se cargan una sola vez:
+
+| CUIT | Contribuyente | Condición | Puntos de venta | Comprobantes autorizados |
+|---|---|---|---|---|
+| `30712345671` | Comercio Demo S.A. (jurídica) | Responsable Inscripto | 1 y 2 (el 3 está deshabilitado) | Factura A N° 1 y Factura B N° 1, en el punto de venta 1 |
+| `27287654311` | María Ejemplo (humana) | Monotributista | 1 | Factura C N° 1 (servicios) |
+| `30709998885` | Fundación Demo (jurídica) | Exento | 1 | — |
+
+Cuentas de Clave Fiscal para ingresar al portal (no pasan por RENAPER). Las dos tienen la clave
+**`ArcaSim2026`**:
+
+| CUIT/CUIL | Cuenta | Representa a |
+|---|---|---|
+| `27287654311` | María Ejemplo | Ella misma |
+| `20255556666` | Pablo Demo | Comercio Demo S.A. y Fundación Demo |
+
+Para empezar de cero: `docker compose down -v` (borra el volumen con los datos).
+
+Después de cambiar el modelo (entidades o `Persistencia/Configuraciones`), crear una migración nueva:
 
 ```bash
-dotnet tool install --global dotnet-ef
-dotnet ef migrations add Inicial --project src/ArcaSim.Infraestructura --startup-project src/ArcaSim.Api --output-dir Persistencia/Migraciones
-dotnet ef database update --project src/ArcaSim.Infraestructura --startup-project src/ArcaSim.Api
+dotnet tool install --global dotnet-ef   # una sola vez
+dotnet ef migrations add NombreDelCambio --project src/ArcaSim.Infraestructura --startup-project src/ArcaSim.Api --output-dir Persistencia/Migraciones
 ```
 
 ---
@@ -396,7 +452,8 @@ Lo que ve una persona: el reemplazo del sitio de ARCA con Clave Fiscal.
 
 - Controllers REST para el portal: contribuyentes, puntos de venta, API key, listado y
   emisión manual de comprobantes, constatación. DTOs en `ArcaSim.Contratos`.
-- Páginas Blazor: alta de contribuyente (con los datos que devuelve RENAPER), puntos de venta,
+- Páginas Blazor: alta de contribuyente (para personas humanas: CUIT, nombre y apellido, que se
+  validan con RENAPER), puntos de venta,
   generación de la **API key** (mostrarla una sola vez, con opción de regenerarla), emitir
   comprobante, mis comprobantes, detalle del comprobante con **QR**, y página pública de
   **constatación** (a donde apunta el QR).

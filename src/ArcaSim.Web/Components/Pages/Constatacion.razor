@@ -1,0 +1,209 @@
+@page "/constatacion"
+@* Adonde lleva el código QR de los comprobantes: misma ruta que ARCA (/fe/qr/?p=...). *@
+@page "/fe/qr"
+@rendermode InteractiveServer
+@inject ArcaSimApiCliente Api
+@inject NavigationManager Navegacion
+
+<PageTitle>Constatación de Comprobantes (CAE / QR) · ArcaSim</PageTitle>
+
+<h2 class="mb-1">Constatación Pública de Comprobantes</h2>
+<p class="text-muted mb-4">
+    Verificá si una factura electrónica y su CAE son válidos en ARCA ingresando la URL de su código QR o los datos del comprobante.
+</p>
+
+@* Los botones están al pie de cada tarjeta: el resultado se trae a la vista al aparecer. *@
+<AvisoMensaje Mensaje="_errorComunicacion" AlCerrar="() => _errorComunicacion = null" />
+
+@if (_resultado is not null)
+{
+    <Aviso Clave="_resultado">
+        <div class="alert @(_resultado.EsValido ? "alert-success" : "alert-danger") shadow-sm mb-4"
+             role="@(_resultado.EsValido ? "status" : "alert")">
+            <h5 class="alert-heading mb-1">
+                @(_resultado.EsValido ? "Comprobante Válido y Constatado en ARCA" : "Comprobante NO Válido")
+            </h5>
+            <p class="mb-0">@_resultado.Mensaje</p>
+
+            @if (_resultado.EsValido && _resultado.Comprobante is not null)
+            {
+                var c = _resultado.Comprobante;
+                <hr />
+                <div class="row g-2 small">
+                    <div class="col-md-4"><strong>CUIT Emisor:</strong> <span class="font-monospace text-dark fw-semibold">@c.CuitEmisor</span></div>
+                    <div class="col-md-4"><strong>Comprobante:</strong> @c.TipoComprobanteDescripcion N° <span class="font-monospace text-dark fw-semibold">@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</span></div>
+                    <div class="col-md-4"><strong>Fecha Emisión:</strong> @c.Fecha.ToString("dd/MM/yyyy")</div>
+                    <div class="col-md-4"><strong>Receptor:</strong> Doc. @c.TipoDocumentoReceptor — <span class="font-monospace text-dark fw-semibold">@c.NumeroDocumentoReceptor</span></div>
+                    <div class="col-md-4"><strong>Importe Total:</strong> $ @c.ImporteTotal.ToString("N2") (@c.Moneda)</div>
+                    <div class="col-md-4"><strong>CAE:</strong> <span class="font-monospace text-dark fw-semibold">@c.Cae</span> (Vto: @c.FechaVencimientoCae?.ToString("dd/MM/yyyy"))</div>
+                </div>
+            }
+        </div>
+    </Aviso>
+}
+
+<div class="row g-4">
+    <!-- Opción 1: Constatar por URL del Código QR -->
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <strong>Opción A: Constatar por Código QR</strong>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <p class="small text-muted">
+                    Escaneá el código QR del comprobante o pegá acá la URL que contiene: la de ArcaSim
+                    (<code>@_ejemploUrlQr</code>) o la de ARCA (<code>https://www.arca.gob.ar/fe/qr/?p=...</code>).
+                </p>
+                <div class="mb-3 flex-grow-1">
+                    <label class="form-label fw-semibold">URL del Código QR</label>
+                    <textarea class="form-control font-monospace" rows="4" @bind="_urlQr"
+                              placeholder="@_ejemploUrlQr"></textarea>
+                </div>
+                <button class="btn btn-primary w-100" @onclick="ConstatarPorQrAsync" disabled="@_verificando">
+                    @(_verificando ? "Verificando QR..." : "Constatar por Código QR")
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opción 2: Constatar por Datos del Comprobante + CAE -->
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <strong>Opción B: Constatar por Datos del Comprobante y CAE</strong>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">CUIT del Emisor</label>
+                        <input class="form-control" @bind="_datosManuales.CuitEmisor" maxlength="11" placeholder="Ej: 30712345671" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Punto de Venta</label>
+                        <input type="number" class="form-control" @bind="_datosManuales.PuntoVentaNumero" min="1" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tipo de Comprobante</label>
+                        <select class="form-select" @bind="_datosManuales.TipoComprobante">
+                            <option value="1">001 - Factura A</option>
+                            <option value="2">002 - Nota de Débito A</option>
+                            <option value="3">003 - Nota de Crédito A</option>
+                            <option value="6">006 - Factura B</option>
+                            <option value="7">007 - Nota de Débito B</option>
+                            <option value="8">008 - Nota de Crédito B</option>
+                            <option value="11">011 - Factura C</option>
+                            <option value="12">012 - Nota de Débito C</option>
+                            <option value="13">013 - Nota de Crédito C</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Número de Comprobante</label>
+                        <input type="number" class="form-control" @bind="_datosManuales.Numero" min="1" />
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">CAE (14 dígitos)</label>
+                        <input class="form-control font-monospace" @bind="_datosManuales.Cae" maxlength="14"
+                               placeholder="Ej: 76451234567890" />
+                    </div>
+
+                    <div class="col-12">
+                        <button class="btn btn-dark w-100" @onclick="ConstatarPorDatosAsync" disabled="@_verificando">
+                            @(_verificando ? "Verificando..." : "Constatar por Datos y CAE")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "qr")]
+    public string? QrQuery { get; set; }
+
+    /// <summary>Datos del comprobante cuando se llega escaneando el QR (/fe/qr/?p=...).</summary>
+    [SupplyParameterFromQuery(Name = "p")]
+    public string? DatosQr { get; set; }
+
+    private string _urlQr = string.Empty;
+    private string _ejemploUrlQr = "/fe/qr/?p=...";
+    private readonly ConstatarComprobanteRequest _datosManuales = new()
+    {
+        CuitEmisor = "30712345671",
+        PuntoVentaNumero = 1,
+        TipoComprobante = 1,
+        Numero = 1
+    };
+
+    private bool _verificando;
+    private Mensaje? _errorComunicacion;
+    private ConstatacionResponse? _resultado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ejemploUrlQr = $"{Navegacion.BaseUri}fe/qr/?p=...";
+
+        if (!string.IsNullOrWhiteSpace(DatosQr))
+        {
+            // Se escaneó el QR: la URL de esta página es la del QR.
+            _urlQr = Navegacion.Uri;
+            await ConstatarPorQrAsync();
+        }
+        else if (!string.IsNullOrWhiteSpace(QrQuery))
+        {
+            _urlQr = QrQuery;
+            await ConstatarPorQrAsync();
+        }
+    }
+
+    private async Task ConstatarPorQrAsync()
+    {
+        _errorComunicacion = null;
+        _resultado = null;
+        _verificando = true;
+
+        try
+        {
+            var (res, err) = await Api.ConstatarComprobanteAsync(new ConstatarComprobanteRequest
+            {
+                UrlQr = _urlQr
+            });
+
+            if (err is not null)
+                _errorComunicacion = Mensaje.Error(err);
+            else
+                _resultado = res;
+        }
+        finally
+        {
+            _verificando = false;
+        }
+    }
+
+    private async Task ConstatarPorDatosAsync()
+    {
+        _errorComunicacion = null;
+        _resultado = null;
+        _verificando = true;
+
+        try
+        {
+            _datosManuales.UrlQr = null;
+            var (res, err) = await Api.ConstatarComprobanteAsync(_datosManuales);
+
+            if (err is not null)
+                _errorComunicacion = Mensaje.Error(err);
+            else
+                _resultado = res;
+        }
+        finally
+        {
+            _verificando = false;
+        }
+    }
+}
+

@@ -1,0 +1,278 @@
+@page "/comprobantes"
+@page "/comprobantes/{CuitRuta}/{PuntoVentaRuta:int}/{TipoRuta:int}/{NumeroRuta:long}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject ArcaSimApiCliente Api
+
+<PageTitle>Mis Comprobantes y Código QR · ArcaSim</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Mis Comprobantes Emitidos</h2>
+    <a href="emitir" class="btn btn-primary btn-sm">+ Emitir Nuevo Comprobante</a>
+</div>
+
+<!-- Detalle del comprobante seleccionado (con Código QR de ARCA). Se abre desde la tabla de abajo:
+     al aparecer se trae a la vista. -->
+@if (_seleccionado is not null)
+{
+    <Aviso Clave="_seleccionado">
+        <div class="card border-primary shadow mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <strong>
+                    Detalle del Comprobante: @_seleccionado.TipoComprobanteDescripcion
+                    N° @_seleccionado.PuntoVentaNumero.ToString("D5")-@_seleccionado.Numero.ToString("D8")
+                </strong>
+                <button type="button" class="btn btn-sm btn-light" @onclick="() => _seleccionado = null">Cerrar detalle</button>
+            </div>
+            <div class="card-body">
+                <div class="row g-4 align-items-center">
+                    <div class="col-md-8">
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">CUIT Emisor</span>
+                                <span class="font-monospace text-dark fw-semibold">@_seleccionado.CuitEmisor</span>
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Fecha de Emisión</span>
+                                <strong>@_seleccionado.Fecha.ToString("dd/MM/yyyy")</strong>
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Receptor</span>
+                                @if (_seleccionado.TipoDocumentoReceptor == 99)
+                                {
+                                    <strong>Consumidor Final</strong>
+                                }
+                                else
+                                {
+                                    <span class="small text-muted">@ObtenerEtiquetaDocumento(_seleccionado.TipoDocumentoReceptor):</span>
+                                    <span class="font-monospace text-dark fw-semibold">@_seleccionado.NumeroDocumentoReceptor</span>
+                                }
+                            </div>
+                            <div class="col-sm-6">
+                                <span class="text-muted small d-block">Moneda / Cotización</span>
+                                <strong>@_seleccionado.Moneda (@_seleccionado.Cotizacion)</strong>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Importe Neto</th>
+                                        <th>Importe IVA</th>
+                                        <th>Importe Exento</th>
+                                        <th>Tributos</th>
+                                        <th>Importe Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>$ @_seleccionado.ImporteNeto.ToString("N2")</td>
+                                        <td>$ @_seleccionado.ImporteIva.ToString("N2")</td>
+                                        <td>$ @_seleccionado.ImporteExento.ToString("N2")</td>
+                                        <td>$ @_seleccionado.ImporteTributos.ToString("N2")</td>
+                                        <td class="fw-bold">$ @_seleccionado.ImporteTotal.ToString("N2")</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="p-3 bg-light rounded border">
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <span class="text-muted small d-block">CAE (Código de Autorización Electrónico)</span>
+                                    <span class="font-monospace text-dark fw-semibold fs-5">@(_seleccionado.Cae ?? "-")</span>
+                                </div>
+                                <div class="col-sm-6">
+                                    <span class="text-muted small d-block">Fecha de Vencimiento del CAE</span>
+                                    <strong>@(_seleccionado.FechaVencimientoCae?.ToString("dd/MM/yyyy") ?? "-")</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Columna del Código QR: al escanearlo se abre la constatación de ArcaSim -->
+                    <div class="col-md-4 text-center border-start">
+                        <h6 class="fw-bold mb-2">Código QR</h6>
+                        @if (!string.IsNullOrWhiteSpace(_seleccionado.UrlQr))
+                        {
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=@Uri.EscapeDataString(_seleccionado.UrlQr)"
+                                 alt="Código QR del comprobante"
+                                 width="170"
+                                 height="170"
+                                 class="img-thumbnail mb-2" />
+
+                            <div class="small text-muted mb-2">
+                                Al escanearlo se abre la constatación de ArcaSim. Los datos (<code>?p=...</code>)
+                                siguen la especificación de ARCA:
+                            </div>
+                            <input class="form-control form-control-sm font-monospace mb-2" readonly value="@_seleccionado.UrlQr" />
+
+                            <a href="constatacion?qr=@Uri.EscapeDataString(_seleccionado.UrlQr)"
+                               class="btn btn-sm btn-outline-primary w-100">
+                                Verificar este QR en Constatación Pública
+                            </a>
+                        }
+                        else
+                        {
+                            <p class="text-muted small">Sin código QR disponible.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Aviso>
+}
+
+<!-- Filtro por Contribuyente -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label class="col-form-label fw-semibold">Filtrar por Contribuyente Emisor:</label>
+            </div>
+            <div class="col-md-5">
+                <select class="form-select form-select-sm" value="@_cuitFiltro" @onchange="OnFiltroCambiadoAsync">
+                    <option value="">-- Todos mis contribuyentes --</option>
+                    @foreach (var c in _contribuyentes)
+                    {
+                        <option value="@c.Cuit">@c.NombreORazonSocial (@c.Cuit)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CargarComprobantesAsync">Actualizar listado</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Comprobantes -->
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Emisor (CUIT)</th>
+                    <th>Comprobante</th>
+                    <th>Número</th>
+                    <th>Receptor</th>
+                    <th class="text-end">Importe Total</th>
+                    <th>CAE</th>
+                    <th>Vto. CAE</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_cargando)
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">Cargando comprobantes...</td>
+                    </tr>
+                }
+                else if (_comprobantes.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">No se encontraron comprobantes emitidos.</td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var c in _comprobantes)
+                    {
+                        <tr class="@(_seleccionado == c ? "table-primary" : "")">
+                            <td>@c.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td><span class="font-monospace text-dark fw-semibold">@c.CuitEmisor</span></td>
+                            <td><span class="@ObtenerClaseBadgeComprobante(c.TipoComprobante)">@c.TipoComprobanteDescripcion</span></td>
+                            <td><span class="font-monospace text-dark fw-semibold">@c.PuntoVentaNumero.ToString("D5")-@c.Numero.ToString("D8")</span></td>
+                            <td>
+                                @if (c.TipoDocumentoReceptor == 99)
+                                {
+                                    <span>Consumidor Final</span>
+                                }
+                                else
+                                {
+                                    <span>@ObtenerEtiquetaDocumento(c.TipoDocumentoReceptor): <span class="font-monospace text-dark fw-semibold">@c.NumeroDocumentoReceptor</span></span>
+                                }
+                            </td>
+                            <td class="text-end fw-semibold">$ @c.ImporteTotal.ToString("N2")</td>
+                            <td><span class="font-monospace text-dark fw-semibold">@(c.Cae ?? "-")</span></td>
+                            <td>@(c.FechaVencimientoCae?.ToString("dd/MM/yyyy") ?? "-")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => _seleccionado = c">
+                                    Ver QR / Detalle
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? CuitRuta { get; set; }
+    [Parameter] public int PuntoVentaRuta { get; set; }
+    [Parameter] public int TipoRuta { get; set; }
+    [Parameter] public long NumeroRuta { get; set; }
+
+    [SupplyParameterFromQuery(Name = "cuit")]
+    public string? CuitQuery { get; set; }
+
+    private List<ContribuyenteResponse> _contribuyentes = [];
+    private List<ComprobanteResponse> _comprobantes = [];
+    private ComprobanteResponse? _seleccionado;
+    private string _cuitFiltro = string.Empty;
+    private bool _cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _contribuyentes = await Api.ListarContribuyentesAsync();
+        _cuitFiltro = CuitRuta ?? CuitQuery ?? string.Empty;
+
+        await CargarComprobantesAsync();
+
+        if (!string.IsNullOrWhiteSpace(CuitRuta) && PuntoVentaRuta > 0 && TipoRuta > 0 && NumeroRuta > 0)
+        {
+            _seleccionado = await Api.ObtenerComprobanteAsync(CuitRuta, PuntoVentaRuta, TipoRuta, NumeroRuta);
+        }
+    }
+
+    private async Task OnFiltroCambiadoAsync(ChangeEventArgs e)
+    {
+        _cuitFiltro = e.Value?.ToString() ?? string.Empty;
+        await CargarComprobantesAsync();
+    }
+
+    private async Task CargarComprobantesAsync()
+    {
+        _cargando = true;
+        try
+        {
+            _comprobantes = await Api.ListarComprobantesAsync(_cuitFiltro);
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private static string ObtenerClaseBadgeComprobante(int tipo) => tipo switch
+    {
+        1 or 2 or 3 => "badge bg-primary",
+        6 or 7 or 8 => "badge bg-secondary",
+        11 or 12 or 13 => "badge bg-success",
+        _ => "badge bg-secondary"
+    };
+
+    private static string ObtenerEtiquetaDocumento(int tipoDoc) => tipoDoc switch
+    {
+        80 => "CUIT",
+        86 => "CUIL",
+        96 => "DNI",
+        _ => $"Doc {tipoDoc}"
+    };
+}
+
