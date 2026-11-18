@@ -8,13 +8,22 @@ using System.Text.Json;
 
 namespace ArcaSim.Dominio.Reglas;
 
+/// <summary>
+/// Arma la URL del código QR de un comprobante según la especificación de ARCA: los datos van en el
+/// parámetro <c>p</c> (JSON en Base64). La página que los verifica la decide quien llama.
+/// </summary>
 public static class GeneradorQrComprobante
 {
-    private const string UrlBase = "https://www.arca.gob.ar/fe/qr/";
+    /// <summary>Página de verificación de ARCA real, la que indica su especificación.</summary>
+    public const string UrlBaseArca = "https://www.arca.gob.ar/fe/qr/";
 
-    public static string GenerarUrl(DatosQrComprobante datos)
+    /// <param name="datos">Datos del comprobante autorizado.</param>
+    /// <param name="urlBase">Página que abre el QR al escanearlo, por ejemplo
+    /// <c>https://portal/fe/qr/</c>. Absoluta (http o https) y sin parámetros.</param>
+    public static string GenerarUrl(DatosQrComprobante datos, string urlBase)
     {
         ArgumentNullException.ThrowIfNull(datos);
+        ValidarUrlBase(urlBase);
         ValidarDatos(datos);
 
         var contenido = new Dictionary<string, object?>
@@ -62,7 +71,25 @@ public static class GeneradorQrComprobante
         string base64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
         string base64Url = Uri.EscapeDataString(base64);
 
-        return $"{UrlBase}?p={base64Url}";
+        return $"{urlBase}?p={base64Url}";
+    }
+
+    /// <summary>Indica si <paramref name="urlBase"/> sirve como página de verificación del QR.</summary>
+    public static bool EsUrlBaseValida(string? urlBase)
+    {
+        return Uri.TryCreate(urlBase, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && string.IsNullOrEmpty(uri.Query)
+            && string.IsNullOrEmpty(uri.Fragment);
+    }
+
+    private static void ValidarUrlBase(string urlBase)
+    {
+        if (!EsUrlBaseValida(urlBase))
+        {
+            throw new ArgumentException(
+                "La URL base del QR debe ser absoluta (http o https) y no tener parámetros.", nameof(urlBase));
+        }
     }
 
     private static void ValidarDatos(DatosQrComprobante datos)

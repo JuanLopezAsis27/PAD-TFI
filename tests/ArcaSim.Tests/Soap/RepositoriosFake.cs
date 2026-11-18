@@ -28,6 +28,15 @@ public sealed class ContribuyenteRepositorioFake
         return _contribuyentes.GetValueOrDefault(cuit);
     }
 
+    public IReadOnlyList<Contribuyente> ObtenerPorCuits(
+        IReadOnlyCollection<string> cuits)
+    {
+        return _contribuyentes.Values
+            .Where(c => cuits.Contains(_obtenerCuit(c)))
+            .OrderBy(c => c.NombreORazonSocial)
+            .ToList();
+    }
+
     public void Agregar(Contribuyente contribuyente)
     {
         string cuit = _obtenerCuit(contribuyente);
@@ -164,6 +173,23 @@ public sealed class ComprobanteRepositorioFake
             .OrderByDescending(
                 comprobante => comprobante.Numero)
             .FirstOrDefault();
+    }
+
+    // =================================================
+    // OBTENER POR EMISORES
+    // =================================================
+
+    public IReadOnlyList<Comprobante> ObtenerPorEmisores(
+        IReadOnlyCollection<string> cuitsEmisores)
+    {
+        return _comprobantes.Values
+            .Where(comprobante =>
+                cuitsEmisores.Contains(comprobante.CUITEmisor))
+            .OrderByDescending(comprobante => comprobante.Fecha)
+            .ThenBy(comprobante => comprobante.PuntoVentaNumero)
+            .ThenBy(comprobante => comprobante.Tipo)
+            .ThenByDescending(comprobante => comprobante.Numero)
+            .ToList();
     }
 
     // =================================================

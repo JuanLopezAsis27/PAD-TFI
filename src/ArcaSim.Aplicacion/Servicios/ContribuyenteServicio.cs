@@ -109,6 +109,17 @@ public class ContribuyenteServicio
     /// <summary>Indica si la cuenta <paramref name="cuitUsuario"/> puede operar el CUIT <paramref name="cuit"/>.</summary>
     public bool Representa(string cuitUsuario, string cuit) => _usuarios.Representa(cuitUsuario, cuit);
 
+    /// <summary>CUIT de los contribuyentes que puede operar la cuenta.</summary>
+    public IReadOnlyList<string> ObtenerCuitsRepresentados(string cuitUsuario) =>
+        _usuarios.ObtenerCuitsRepresentados(cuitUsuario);
+
+    /// <summary>Contribuyentes que representa la cuenta, con sus puntos de venta, ordenados por nombre.</summary>
+    public IReadOnlyList<Contribuyente> ListarRepresentados(string cuitUsuario)
+    {
+        var cuits = _usuarios.ObtenerCuitsRepresentados(cuitUsuario);
+        return cuits.Count == 0 ? [] : _repositorio.ObtenerPorCuits(cuits);
+    }
+
     public Contribuyente? ConsultarPorCUIT(string cuit)
     {
         return _repositorio.ObtenerPorCUIT(cuit);

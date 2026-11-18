@@ -193,6 +193,13 @@ ejemplo en C#, Python y Node.js). La dirección del servicio que muestra sale de
 si no está, de `Api:UrlBase`; hay que configurar `Api__UrlPublica` cuando el portal llama a la API
 por una dirección interna (en Docker Compose, `http://api:8080`).
 
+El **código QR** de los comprobantes lleva a la constatación del portal (`/fe/qr/?p=...`, la misma
+ruta que ARCA) y no a ARCA real, que no conoce los comprobantes del simulador. La API arma esa
+dirección con `Portal:UrlPublica`, la dirección pública del portal: en Development es
+`http://localhost:5247` y en Docker Compose se pasa con `Portal__UrlPublica`. Si falta, el QR lleva
+a ARCA real y la API lo avisa al arrancar. La constatación acepta las dos direcciones, porque un
+sistema que sigue la especificación de ARCA imprime la de ARCA.
+
 ### Integración con RENAPER
 
 Usamos el servicio **Renaper Validation** de otro grupo. No devuelve los datos de la persona: solo

@@ -18,15 +18,20 @@ public class ComprobanteServicio
     private readonly IComprobanteRepositorio _comprobanteRepositorio;
 
     private readonly GeneradorCaeSimulado _generadorCae;
+    private readonly OpcionesQr _qr;
 
+    /// <param name="opcionesQr">Adónde lleva el QR de los comprobantes. Si no se indica, a ARCA real
+    /// (alcanza para los datos de prueba y los tests, que no lo escanean).</param>
     public ComprobanteServicio(IContribuyenteRepositorio contribuyenteRepositorio,
         IPuntoVentaRepositorio puntoVentaRepositorio,
-        IComprobanteRepositorio comprobanteRepositorio)
+        IComprobanteRepositorio comprobanteRepositorio,
+        OpcionesQr? opcionesQr = null)
     {
         _contribuyenteRepositorio = contribuyenteRepositorio;
         _puntoVentaRepositorio = puntoVentaRepositorio;
         _comprobanteRepositorio = comprobanteRepositorio;
         _generadorCae = new GeneradorCaeSimulado();
+        _qr = opcionesQr ?? OpcionesQr.Arca;
     }
 
     public void AutorizarSimuladamente(string cuitEmisor, int puntoVentaNumero, TipoComprobante tipo,
@@ -134,6 +139,38 @@ public class ComprobanteServicio
         return _comprobanteRepositorio.ObtenerUltimoAutorizado(cuitEmisor, puntoVentaNumero, tipo)?.Numero ?? 0;
     }
 
+    /// <summary>Comprobantes emitidos por esos CUIT, del más reciente al más viejo.</summary>
+    public IReadOnlyList<Comprobante> ListarPorEmisores(IReadOnlyCollection<string> cuitsEmisores)
+    {
+        ArgumentNullException.ThrowIfNull(cuitsEmisores);
+        return cuitsEmisores.Count == 0 ? [] : _comprobanteRepositorio.ObtenerPorEmisores(cuitsEmisores);
+    }
+
+    /// <summary>
+    /// URL del código QR del comprobante, que lleva a la constatación configurada en <see cref="OpcionesQr"/>.
+    /// Devuelve null si no está autorizado o si le falta algún dato del QR (por ejemplo, la cotización de
+    /// un comprobante en moneda extranjera que se cancela en esa moneda).
+    /// </summary>
+    public string? GenerarUrlQr(Comprobante comprobante)
+    {
+        ArgumentNullException.ThrowIfNull(comprobante);
+
+        if (comprobante.EstadoAutorizacion is not (EstadoAutorizacionComprobante.Autorizado or
+            EstadoAutorizacionComprobante.AutorizadoConObservaciones))
+        {
+            return null;
+        }
+
+        try
+        {
+            return ServicioQrComprobante.GenerarUrl(comprobante, _qr.UrlBase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     public ResultadoConstatacion Constatar(string cuitEmisor, int puntoVentaNumero,
         TipoComprobante tipo, long numero, string cae)
     {
@@ -170,15 +207,20 @@ public class ComprobanteServicio
         return new ResultadoConstatacion
         {
             EsValido = true,
-            Mensaje = "El comprobante es válido."
+            Mensaje = "El comprobante es válido.",
+            Comprobante = comprobante
         };
     }
 
+    /// <summary>
+    /// Constata un comprobante con la URL de su código QR. Se aceptan las del portal (las que genera
+    /// ArcaSim) y las de ARCA real, porque un sistema que sigue la especificación al pie de la letra
+    /// imprime esas.
+    /// </summary>
     public ResultadoConstatacion ConstatarPorQr(string urlQr)
     {
         if (string.IsNullOrWhiteSpace(urlQr) || !Uri.TryCreate(urlQr, UriKind.Absolute, out var uri) ||
-            uri.Scheme != Uri.UriSchemeHttps || (uri.Host != "www.arca.gob.ar" && uri.Host != "arca.gob.ar")
-            || uri.AbsolutePath.TrimEnd('/') != "/fe/qr")
+            !EsPaginaDeVerificacionQr(uri))
         {
             return new ResultadoConstatacion
             {
@@ -294,6 +336,26 @@ public class ComprobanteServicio
             };
         }
     }
+
+    private bool EsPaginaDeVerificacionQr(Uri uri)
+    {
+        bool esArca = uri.Scheme == Uri.UriSchemeHttps
+            && uri.Host is "www.arca.gob.ar" or "arca.gob.ar"
+            && MismaRuta(uri.AbsolutePath, "/fe/qr");
+
+        // Se comparan el host y la ruta, no el esquema ni el puerto: detrás de un proxy (como en Render) el
+        // portal puede recibir la página por http aunque su dirección pública sea https.
+        var portal = new Uri(_qr.UrlBase);
+        bool esPortal = !_qr.ApuntaAArca
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && string.Equals(uri.Host, portal.Host, StringComparison.OrdinalIgnoreCase)
+            && MismaRuta(uri.AbsolutePath, portal.AbsolutePath);
+
+        return esArca || esPortal;
+    }
+
+    private static bool MismaRuta(string ruta, string esperada) =>
+        string.Equals(ruta.TrimEnd('/'), esperada.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
 
     private static string LeerCampoComoTexto(JsonElement datos, string nombre)
     {

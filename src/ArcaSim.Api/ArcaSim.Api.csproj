@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ArcaSim.Contratos\ArcaSim.Contratos.csproj" />
     <ProjectReference Include="..\ArcaSim.Infraestructura\ArcaSim.Infraestructura.csproj" />
   </ItemGroup>
 

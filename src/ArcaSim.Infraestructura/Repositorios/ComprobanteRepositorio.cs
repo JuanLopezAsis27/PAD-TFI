@@ -28,6 +28,19 @@ public class ComprobanteRepositorio(AppDbContext db) : IComprobanteRepositorio
             .FirstOrDefault();
     }
 
+    public IReadOnlyList<Comprobante> ObtenerPorEmisores(IReadOnlyCollection<string> cuitsEmisores)
+    {
+        // Las alícuotas de IVA vienen solas: son entidades propias (owned) del comprobante.
+        return db.Comprobantes
+            .AsNoTracking()
+            .Where(c => cuitsEmisores.Contains(c.CUITEmisor))
+            .OrderByDescending(c => c.Fecha)
+            .ThenBy(c => c.PuntoVentaNumero)
+            .ThenBy(c => c.Tipo)
+            .ThenByDescending(c => c.Numero)
+            .ToList();
+    }
+
     public void Agregar(Comprobante comprobante)
     {
         db.Comprobantes.Add(comprobante);

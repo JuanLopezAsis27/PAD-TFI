@@ -34,6 +34,35 @@ public class ContribuyenteServicioTests
     }
 
     [Fact]
+    public void ListarRepresentados_DevuelveSoloLosQueRepresentaLaCuentaOrdenadosPorNombre()
+    {
+        var zeta = _servicio.RegistrarPersonaJuridica(CuitUsuario, "30712345671", "Zeta S.A.",
+            CondicionIva.ResponsableInscripto);
+        var alfa = _servicio.RegistrarPersonaJuridica(CuitUsuario, "30709998885", "Alfa S.A.",
+            CondicionIva.Exento);
+        _repositorio.Agregar(new Contribuyente
+        {
+            CUIT = "30500010912",
+            NombreORazonSocial = "Ajena S.A.",
+            TipoPersona = TipoPersona.Juridica,
+            CondicionIva = CondicionIva.ResponsableInscripto
+        });
+
+        var lista = _servicio.ListarRepresentados(CuitUsuario);
+
+        Assert.Equal(new[] { alfa, zeta }, lista);
+    }
+
+    [Fact]
+    public void ListarRepresentados_CuentaSinRepresentados_DevuelveVacio()
+    {
+        _repositorio.Agregar(CrearContribuyente());
+
+        Assert.Empty(_servicio.ListarRepresentados(CuitUsuario));
+        Assert.Empty(_servicio.ObtenerCuitsRepresentados(CuitUsuario));
+    }
+
+    [Fact]
     public void Registrar_ContribuyenteValido_AgregaRepositorio()
     {
         var contribuyente = CrearContribuyente();
@@ -283,6 +312,14 @@ internal class RepositorioContribuyenteFalso : IContribuyenteRepositorio
     public Contribuyente? ObtenerPorCUIT(string cuit)
     {
         return Contribuyentes.FirstOrDefault(c => c.CUIT == cuit);
+    }
+
+    public IReadOnlyList<Contribuyente> ObtenerPorCuits(IReadOnlyCollection<string> cuits)
+    {
+        return Contribuyentes
+            .Where(c => cuits.Contains(c.CUIT))
+            .OrderBy(c => c.NombreORazonSocial)
+            .ToList();
     }
 
     public void Agregar(Contribuyente contribuyente)

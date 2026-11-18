@@ -91,19 +91,20 @@
                         </div>
                     </div>
 
-                    <!-- Columna del Código QR Oficial de ARCA -->
+                    <!-- Columna del Código QR: al escanearlo se abre la constatación de ArcaSim -->
                     <div class="col-md-4 text-center border-start">
-                        <h6 class="fw-bold mb-2">Código QR Oficial ARCA</h6>
+                        <h6 class="fw-bold mb-2">Código QR</h6>
                         @if (!string.IsNullOrWhiteSpace(_seleccionado.UrlQr))
                         {
                             <img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=@Uri.EscapeDataString(_seleccionado.UrlQr)"
-                                 alt="Código QR ARCA"
+                                 alt="Código QR del comprobante"
                                  width="170"
                                  height="170"
                                  class="img-thumbnail mb-2" />
 
                             <div class="small text-muted mb-2">
-                                URL según especificación ARCA (<code>/fe/qr/?p=...</code>):
+                                Al escanearlo se abre la constatación de ArcaSim. Los datos (<code>?p=...</code>)
+                                siguen la especificación de ARCA:
                             </div>
                             <input class="form-control form-control-sm font-monospace mb-2" readonly value="@_seleccionado.UrlQr" />
 

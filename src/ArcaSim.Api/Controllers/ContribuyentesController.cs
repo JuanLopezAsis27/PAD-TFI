@@ -5,10 +5,8 @@ using ArcaSim.Contratos.Requests;
 using ArcaSim.Contratos.Responses;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
-using ArcaSim.Infraestructura.Persistencia;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ArcaSim.Api.Controllers;
 
@@ -21,23 +19,15 @@ namespace ArcaSim.Api.Controllers;
 public class ContribuyentesController(
     ContribuyenteServicio contribuyenteServicio,
     PuntoVentaServicio puntoVentaServicio,
-    IAdministradorApiKeysSoap administradorApiKeys,
-    AppDbContext db) : ControllerBase
+    IAdministradorApiKeysSoap administradorApiKeys) : ControllerBase
 {
     /// <summary>
     /// Lista los contribuyentes que representa la cuenta, con sus puntos de venta.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<ContribuyenteResponse>>> Listar(CancellationToken cancellationToken)
+    public ActionResult<List<ContribuyenteResponse>> Listar()
     {
-        var cuitUsuario = User.ObtenerCuit();
-
-        var lista = await db.Contribuyentes
-            .AsNoTracking()
-            .Include(c => c.PuntosVenta)
-            .Where(c => db.Representaciones.Any(r => r.CuitUsuario == cuitUsuario && r.CuitRepresentado == c.CUIT))
-            .OrderBy(c => c.NombreORazonSocial)
-            .ToListAsync(cancellationToken);
+        var lista = contribuyenteServicio.ListarRepresentados(User.ObtenerCuit());
 
         return Ok(lista.Select(MapeadorRest.MapearContribuyente).ToList());
     }

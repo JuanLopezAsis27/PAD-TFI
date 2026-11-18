@@ -1,6 +1,9 @@
 @page "/constatacion"
+@* Adonde lleva el código QR de los comprobantes: misma ruta que ARCA (/fe/qr/?p=...). *@
+@page "/fe/qr"
 @rendermode InteractiveServer
 @inject ArcaSimApiCliente Api
+@inject NavigationManager Navegacion
 
 <PageTitle>Constatación de Comprobantes (CAE / QR) · ArcaSim</PageTitle>
 
@@ -44,16 +47,17 @@
     <div class="col-lg-6">
         <div class="card h-100 shadow-sm">
             <div class="card-header bg-primary text-white">
-                <strong>Opción A: Constatar por Código QR de ARCA</strong>
+                <strong>Opción A: Constatar por Código QR</strong>
             </div>
             <div class="card-body d-flex flex-column">
                 <p class="small text-muted">
-                    Pegá la URL completa contenida en el código QR del comprobante (formato <code>https://www.arca.gob.ar/fe/qr/?p=...</code>):
+                    Escaneá el código QR del comprobante o pegá acá la URL que contiene: la de ArcaSim
+                    (<code>@_ejemploUrlQr</code>) o la de ARCA (<code>https://www.arca.gob.ar/fe/qr/?p=...</code>).
                 </p>
                 <div class="mb-3 flex-grow-1">
                     <label class="form-label fw-semibold">URL del Código QR</label>
                     <textarea class="form-control font-monospace" rows="4" @bind="_urlQr"
-                              placeholder="https://www.arca.gob.ar/fe/qr/?p=eyJ2ZXIiOjEs..."></textarea>
+                              placeholder="@_ejemploUrlQr"></textarea>
                 </div>
                 <button class="btn btn-primary w-100" @onclick="ConstatarPorQrAsync" disabled="@_verificando">
                     @(_verificando ? "Verificando QR..." : "Constatar por Código QR")
@@ -121,7 +125,12 @@
     [SupplyParameterFromQuery(Name = "qr")]
     public string? QrQuery { get; set; }
 
+    /// <summary>Datos del comprobante cuando se llega escaneando el QR (/fe/qr/?p=...).</summary>
+    [SupplyParameterFromQuery(Name = "p")]
+    public string? DatosQr { get; set; }
+
     private string _urlQr = string.Empty;
+    private string _ejemploUrlQr = "/fe/qr/?p=...";
     private readonly ConstatarComprobanteRequest _datosManuales = new()
     {
         CuitEmisor = "30712345671",
@@ -136,7 +145,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!string.IsNullOrWhiteSpace(QrQuery))
+        _ejemploUrlQr = $"{Navegacion.BaseUri}fe/qr/?p=...";
+
+        if (!string.IsNullOrWhiteSpace(DatosQr))
+        {
+            // Se escaneó el QR: la URL de esta página es la del QR.
+            _urlQr = Navegacion.Uri;
+            await ConstatarPorQrAsync();
+        }
+        else if (!string.IsNullOrWhiteSpace(QrQuery))
         {
             _urlQr = QrQuery;
             await ConstatarPorQrAsync();

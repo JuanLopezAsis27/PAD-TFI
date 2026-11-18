@@ -1,5 +1,6 @@
 using ArcaSim.Api.Autenticacion;
 using ArcaSim.Api.Soap.Wsfev1;
+using ArcaSim.Aplicacion.Modelos;
 using ArcaSim.Aplicacion.Servicios;
 using ArcaSim.Infraestructura;
 using ArcaSim.Infraestructura.Integraciones.Renaper;
@@ -9,7 +10,6 @@ using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using SoapCore;
-using ArcaSim.Aplicacion.Servicios;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,8 +20,6 @@ builder.Services.AddOpenApi();
 // SOAP (lo usan los sistemas de otros grupos, igual que con ARCA)
 builder.Services.AddSoapCore();
 builder.Services.AddScoped<IServiceSoap, ServiceSoap>();
-//Servicios de Aplicacion
-builder.Services.AddScoped<ComprobanteServicio>();
 // A futuro (opcional): registrar el servicio WSAA (loginCms) para autenticar con certificados
 
 var renaper = builder.Configuration.GetSection(RenaperOpciones.Seccion).Get<RenaperOpciones>() ?? new RenaperOpciones();
@@ -54,6 +52,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// El QR de los comprobantes lleva a la constatación del portal (/fe/qr/, la misma ruta que ARCA). Sin
+// Portal:UrlPublica llevaría a ARCA real, que no conoce los comprobantes del simulador.
+var urlPortal = builder.Configuration["Portal:UrlPublica"];
+var opcionesQr = string.IsNullOrWhiteSpace(urlPortal) ? OpcionesQr.Arca : OpcionesQr.ParaPortal(urlPortal);
+builder.Services.AddSingleton(opcionesQr);
+
 // Servicios de aplicación (casos de uso compartidos por REST y SOAP)
 builder.Services.AddScoped<ClaveFiscalServicio>();
 builder.Services.AddScoped<ContribuyenteServicio>();
@@ -72,6 +76,17 @@ else
 {
     app.Logger.LogInformation("RENAPER: modo Http contra {UrlBase} (API key de {Largo} caracteres).",
         renaper.UrlBase, renaper.ApiKey.Length);
+}
+
+if (opcionesQr.ApuntaAArca)
+{
+    app.Logger.LogWarning("Falta Portal:UrlPublica: el QR de los comprobantes lleva a ARCA real ({UrlBase}), " +
+        "que no los conoce. Configurarla con la dirección pública del portal (Portal__UrlPublica).",
+        opcionesQr.UrlBase);
+}
+else
+{
+    app.Logger.LogInformation("QR de los comprobantes: {UrlBase}?p=...", opcionesQr.UrlBase);
 }
 
 // Migraciones y datos de prueba al iniciar, según el ambiente (sección BaseDeDatos de appsettings).

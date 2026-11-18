@@ -4,10 +4,8 @@ using ArcaSim.Contratos.Requests;
 using ArcaSim.Contratos.Responses;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
-using ArcaSim.Infraestructura.Persistencia;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ArcaSim.Api.Controllers;
 
@@ -19,20 +17,17 @@ namespace ArcaSim.Api.Controllers;
 [Route("api/comprobantes")]
 public class ComprobantesController(
     ComprobanteServicio comprobanteServicio,
-    ContribuyenteServicio contribuyenteServicio,
-    AppDbContext db) : ControllerBase
+    ContribuyenteServicio contribuyenteServicio) : ControllerBase
 {
     /// <summary>
     /// Lista los comprobantes emitidos por un contribuyente (?cuit=...) o, sin cuit, los de todos los
     /// contribuyentes que representa la cuenta.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<ComprobanteResponse>>> ListarPorCuit(
-        [FromQuery] string? cuit,
-        CancellationToken cancellationToken)
+    public ActionResult<List<ComprobanteResponse>> ListarPorCuit([FromQuery] string? cuit)
     {
         var cuitUsuario = User.ObtenerCuit();
-        var query = db.Comprobantes.AsNoTracking().AsQueryable();
+        IReadOnlyList<string> emisores;
 
         if (!string.IsNullOrWhiteSpace(cuit))
         {
@@ -40,22 +35,16 @@ public class ComprobantesController(
             if (!contribuyenteServicio.Representa(cuitUsuario, cuitLimpio))
                 return this.NoRepresenta(cuitLimpio);
 
-            query = query.Where(c => c.CUITEmisor == cuitLimpio);
+            emisores = [cuitLimpio];
         }
         else
         {
-            query = query.Where(c =>
-                db.Representaciones.Any(r => r.CuitUsuario == cuitUsuario && r.CuitRepresentado == c.CUITEmisor));
+            emisores = contribuyenteServicio.ObtenerCuitsRepresentados(cuitUsuario);
         }
 
-        var comprobantes = await query
-            .OrderByDescending(c => c.Fecha)
-            .ThenBy(c => c.PuntoVentaNumero)
-            .ThenBy(c => c.Tipo)
-            .ThenByDescending(c => c.Numero)
-            .ToListAsync(cancellationToken);
+        var comprobantes = comprobanteServicio.ListarPorEmisores(emisores);
 
-        return Ok(comprobantes.Select(MapeadorRest.MapearComprobante).ToList());
+        return Ok(comprobantes.Select(Mapear).ToList());
     }
 
     /// <summary>
@@ -81,7 +70,7 @@ public class ComprobantesController(
         if (comprobante is null)
             return NotFound(new { mensaje = "No se encontró el comprobante solicitado." });
 
-        return Ok(MapeadorRest.MapearComprobante(comprobante));
+        return Ok(Mapear(comprobante));
     }
 
     /// <summary>
@@ -173,7 +162,7 @@ public class ComprobantesController(
         var validacion = comprobanteServicio.Registrar(comprobante, fechaHoy);
         if (!validacion.EsValido)
         {
-            var respuestaRechazada = MapeadorRest.MapearComprobante(comprobante);
+            var respuestaRechazada = MapeadorRest.MapearComprobante(comprobante, urlQr: null);
             respuestaRechazada.EstadoAutorizacion = EstadoAutorizacionComprobante.Rechazado.ToString();
             respuestaRechazada.Errores = validacion.Errores.Select(e => new ErrorValidacionDto
             {
@@ -205,7 +194,10 @@ public class ComprobantesController(
                 tipo = (int)autorizado.Tipo,
                 numero = autorizado.Numero
             },
-            MapeadorRest.MapearComprobante(autorizado));
+            Mapear(autorizado));
     }
+
+    private ComprobanteResponse Mapear(Comprobante comprobante) =>
+        MapeadorRest.MapearComprobante(comprobante, comprobanteServicio.GenerarUrlQr(comprobante));
 }
 
