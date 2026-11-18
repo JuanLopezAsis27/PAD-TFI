@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ArcaSim.Dominio\ArcaSim.Dominio.csproj" />
-    <ProjectReference Include="..\ArcaSim.Contratos\ArcaSim.Contratos.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

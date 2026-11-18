@@ -15,6 +15,16 @@ public class ContribuyenteRepositorio(AppDbContext db) : IContribuyenteRepositor
             .FirstOrDefault(c => c.CUIT == cuit);
     }
 
+    public IReadOnlyList<Contribuyente> ObtenerPorCuits(IReadOnlyCollection<string> cuits)
+    {
+        return db.Contribuyentes
+            .AsNoTracking()
+            .Include(c => c.PuntosVenta)
+            .Where(c => cuits.Contains(c.CUIT))
+            .OrderBy(c => c.NombreORazonSocial)
+            .ToList();
+    }
+
     public void Agregar(Contribuyente contribuyente)
     {
         db.Contribuyentes.Add(contribuyente);

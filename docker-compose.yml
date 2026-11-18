@@ -46,6 +46,8 @@ services:
       # RENAPER_MODO=Http y RENAPER_API_KEY=la_clave_generada_en_su_portal.
       Renaper__Modo: ${RENAPER_MODO:-Stub}
       Renaper__ApiKey: ${RENAPER_API_KEY:-}
+      # Adónde lleva el QR de los comprobantes: la constatación del portal (/fe/qr/), no ARCA real.
+      Portal__UrlPublica: "http://localhost:5247"
     ports:
       - "5030:8080"
 

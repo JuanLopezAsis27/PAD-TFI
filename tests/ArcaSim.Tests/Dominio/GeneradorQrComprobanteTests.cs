@@ -10,6 +10,7 @@ namespace ArcaSim.Tests.Dominio;
 
 public class GeneradorQrComprobanteTests
 {
+    private const string UrlBase = GeneradorQrComprobante.UrlBaseArca;
     private static DatosQrComprobante CrearDatos()
     {
         return new DatosQrComprobante
@@ -43,14 +44,14 @@ public class GeneradorQrComprobanteTests
     [Fact]
     public void GenerarUrl_DatosValidos_DevuelveUrlDeArca()
     {
-        var url = GeneradorQrComprobante.GenerarUrl(CrearDatos());
+        var url = GeneradorQrComprobante.GenerarUrl(CrearDatos(), UrlBase);
         Assert.StartsWith("https://www.arca.gob.ar/fe/qr/?p=", url);
     }
 
     [Fact]
     public void GenerarUrl_DatosValidos_ContieneJsonCorrecto()
     {
-        var url = GeneradorQrComprobante.GenerarUrl(CrearDatos());
+        var url = GeneradorQrComprobante.GenerarUrl(CrearDatos(), UrlBase);
         using var documento = ObtenerJson(url);
         var raiz = documento.RootElement;
 
@@ -78,7 +79,7 @@ public class GeneradorQrComprobanteTests
             NumeroDocumentoReceptor = null
         };
 
-        var url = GeneradorQrComprobante.GenerarUrl(datos);
+        var url = GeneradorQrComprobante.GenerarUrl(datos, UrlBase);
         var base64Url = url.Split("?p=")[1];
         var base64 = Uri.UnescapeDataString(base64Url);
         var json = Encoding.UTF8.GetString(
@@ -98,7 +99,7 @@ public class GeneradorQrComprobanteTests
         {
             CUITEmisor = "20301234564"
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -108,7 +109,7 @@ public class GeneradorQrComprobanteTests
         {
             CodigoAutorizacion = "12345"
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -118,7 +119,7 @@ public class GeneradorQrComprobanteTests
         {
             PuntoVenta = 0
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -128,7 +129,7 @@ public class GeneradorQrComprobanteTests
         {
             PuntoVenta = 100000
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -138,7 +139,7 @@ public class GeneradorQrComprobanteTests
         {
             NumeroComprobante = 0
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -148,7 +149,7 @@ public class GeneradorQrComprobanteTests
         {
             NumeroComprobante = 100000000
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -158,7 +159,7 @@ public class GeneradorQrComprobanteTests
         {
             Moneda = "XXX"
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -168,7 +169,7 @@ public class GeneradorQrComprobanteTests
         {
             Moneda = null!
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -178,7 +179,7 @@ public class GeneradorQrComprobanteTests
         {
             Moneda = ""
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -188,7 +189,7 @@ public class GeneradorQrComprobanteTests
         {
             Cotizacion = 0m
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -198,7 +199,7 @@ public class GeneradorQrComprobanteTests
         {
             Cotizacion = 1000.1234567m
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -208,7 +209,7 @@ public class GeneradorQrComprobanteTests
         {
             ImporteTotal = -1m
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -218,13 +219,36 @@ public class GeneradorQrComprobanteTests
         {
             ImporteTotal = 1000.123m
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
+    }
+
+    [Fact]
+    public void GenerarUrl_ConLaUrlDelPortal_LlevaAlPortalConLosMismosDatos()
+    {
+        var urlArca = GeneradorQrComprobante.GenerarUrl(CrearDatos(), UrlBase);
+        var urlPortal = GeneradorQrComprobante.GenerarUrl(CrearDatos(), "http://localhost:5247/fe/qr/");
+
+        Assert.StartsWith("http://localhost:5247/fe/qr/?p=", urlPortal);
+        Assert.Equal(urlArca[urlArca.IndexOf("?p=", StringComparison.Ordinal)..],
+            urlPortal[urlPortal.IndexOf("?p=", StringComparison.Ordinal)..]);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("fe/qr/")]
+    [InlineData("ftp://arcasim.example.com/fe/qr/")]
+    [InlineData("https://arcasim.example.com/fe/qr/?a=1")]
+    [InlineData("https://arcasim.example.com/fe/qr/#ancla")]
+    public void GenerarUrl_UrlBaseInvalida_LanzaExcepcion(string? urlBase)
+    {
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(CrearDatos(), urlBase!));
     }
 
     [Fact]
     public void GenerarUrl_DatosNulos_LanzaExcepcion()
     {
-        Assert.Throws<ArgumentNullException>(() => GeneradorQrComprobante.GenerarUrl(null!));
+        Assert.Throws<ArgumentNullException>(() => GeneradorQrComprobante.GenerarUrl(null!, UrlBase));
     }
 
     [Fact]
@@ -235,7 +259,7 @@ public class GeneradorQrComprobanteTests
             TipoDocumentoReceptor = (int)TipoDocumento.CUIT,
             NumeroDocumentoReceptor = "12345678901234567890"
         };
-        string url = GeneradorQrComprobante.GenerarUrl(datos);
+        string url = GeneradorQrComprobante.GenerarUrl(datos, UrlBase);
 
         Assert.StartsWith("https://www.arca.gob.ar/fe/qr/?p=", url);
 
@@ -254,7 +278,7 @@ public class GeneradorQrComprobanteTests
             TipoDocumentoReceptor = (int)TipoDocumento.CUIT,
             NumeroDocumentoReceptor = "123456789012345678901"
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -265,7 +289,7 @@ public class GeneradorQrComprobanteTests
             TipoDocumentoReceptor = (int)TipoDocumento.CUIT,
             NumeroDocumentoReceptor = "123456789ABC"
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -276,7 +300,7 @@ public class GeneradorQrComprobanteTests
             TipoDocumentoReceptor = (int)TipoDocumento.CUIT,
             NumeroDocumentoReceptor = null
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -286,7 +310,7 @@ public class GeneradorQrComprobanteTests
         {
             Fecha = default
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -296,7 +320,7 @@ public class GeneradorQrComprobanteTests
         {
             TipoComprobante = 999
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -306,7 +330,7 @@ public class GeneradorQrComprobanteTests
         {
             TipoDocumentoReceptor = 999
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -317,7 +341,7 @@ public class GeneradorQrComprobanteTests
             TipoDocumentoReceptor = null,
             NumeroDocumentoReceptor = "12345678"
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -327,7 +351,7 @@ public class GeneradorQrComprobanteTests
         {
             CodigoAutorizacion = null!
         };
-        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos));
+        Assert.Throws<ArgumentException>(() => GeneradorQrComprobante.GenerarUrl(datos, UrlBase));
     }
 
     [Fact]
@@ -337,7 +361,7 @@ public class GeneradorQrComprobanteTests
         {
             ImporteTotal = 0m
         };
-        string url = GeneradorQrComprobante.GenerarUrl(datos);
+        string url = GeneradorQrComprobante.GenerarUrl(datos, UrlBase);
         using var documento = ObtenerJson(url);
 
         Assert.Equal(0m, documento.RootElement.GetProperty("importe").GetDecimal());

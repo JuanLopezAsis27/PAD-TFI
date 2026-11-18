@@ -9,6 +9,7 @@ namespace ArcaSim.Tests.Dominio;
 
 public class ServicioQrComprobanteTests
 {
+    private const string UrlBase = GeneradorQrComprobante.UrlBaseArca;
     private static Comprobante CrearComprobanteAutorizado(string[]? observaciones = null)
     {
         var comprobante = new Comprobante
@@ -39,7 +40,7 @@ public class ServicioQrComprobanteTests
     public void GenerarUrl_ComprobanteAutorizado_DevuelveUrlDeArca()
     {
         var comprobante = CrearComprobanteAutorizado();
-        var url = ServicioQrComprobante.GenerarUrl(comprobante);
+        var url = ServicioQrComprobante.GenerarUrl(comprobante, UrlBase);
         Assert.StartsWith("https://www.arca.gob.ar/fe/qr/?p=", url);
     }
 
@@ -47,7 +48,7 @@ public class ServicioQrComprobanteTests
     public void GenerarUrl_ComprobanteAutorizadoConObservaciones_DevuelveUrl()
     {
         var comprobante = CrearComprobanteAutorizado(new[] { "OBS001" });
-        var url = ServicioQrComprobante.GenerarUrl(comprobante);
+        var url = ServicioQrComprobante.GenerarUrl(comprobante, UrlBase);
         Assert.StartsWith("https://www.arca.gob.ar/fe/qr/?p=", url);
     }
 
@@ -55,7 +56,7 @@ public class ServicioQrComprobanteTests
     public void GenerarUrl_ComprobantePendiente_LanzaExcepcion()
     {
         var comprobante = new Comprobante();
-        Assert.Throws<InvalidOperationException>(() => ServicioQrComprobante.GenerarUrl(comprobante));
+        Assert.Throws<InvalidOperationException>(() => ServicioQrComprobante.GenerarUrl(comprobante, UrlBase));
     }
 
     [Fact]
@@ -67,7 +68,7 @@ public class ServicioQrComprobanteTests
             {
                 Autorizado = false
             });
-        Assert.Throws<InvalidOperationException>(() => ServicioQrComprobante.GenerarUrl(comprobante));
+        Assert.Throws<InvalidOperationException>(() => ServicioQrComprobante.GenerarUrl(comprobante, UrlBase));
     }
 
     [Fact]
@@ -75,12 +76,12 @@ public class ServicioQrComprobanteTests
     {
         var comprobante = CrearComprobanteAutorizado();
         comprobante.PuntoVentaNumero = 0;
-        Assert.Throws<ArgumentException>(() => ServicioQrComprobante.GenerarUrl(comprobante));
+        Assert.Throws<ArgumentException>(() => ServicioQrComprobante.GenerarUrl(comprobante, UrlBase));
     }
 
     [Fact]
     public void GenerarUrl_ComprobanteNulo_LanzaExcepcion()
     {
-        Assert.Throws<ArgumentNullException>(() => ServicioQrComprobante.GenerarUrl(null!));
+        Assert.Throws<ArgumentNullException>(() => ServicioQrComprobante.GenerarUrl(null!, UrlBase));
     }
 }

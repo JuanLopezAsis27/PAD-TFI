@@ -11,6 +11,7 @@ using System.Text.Json;
 
 public class ComprobanteServicioTests
 {
+    private const string UrlBase = GeneradorQrComprobante.UrlBaseArca;
     private readonly RepositorioContribuyenteFalso _contribuyenteRepositorio;
     private readonly RepositorioPuntoVentaFalso _puntoVentaRepositorio;
     private readonly RepositorioComprobanteFalso _comprobanteRepositorio;
@@ -550,7 +551,7 @@ public class ComprobanteServicioTests
             Cotizacion = comprobante.Cotizacion!.Value,
             TipoAutorizacion = "E",
         };
-        var url = GeneradorQrComprobante.GenerarUrl(datosQr);
+        var url = GeneradorQrComprobante.GenerarUrl(datosQr, UrlBase);
         var resultado = _servicio.ConstatarPorQr(url);
         Assert.True(resultado.EsValido);
         Assert.Equal("El comprobante es válido.", resultado.Mensaje);
@@ -577,7 +578,7 @@ public class ComprobanteServicioTests
             ImporteTotal = comprobante.ImporteTotal,
             CodigoAutorizacion = "99999999999999"
         };
-        var url = GeneradorQrComprobante.GenerarUrl(datosQr);
+        var url = GeneradorQrComprobante.GenerarUrl(datosQr, UrlBase);
         var resultado = _servicio.ConstatarPorQr(url);
         Assert.False(resultado.EsValido);
         Assert.Equal("El CAE informado no coincide con el registrado.", resultado.Mensaje);
@@ -906,6 +907,17 @@ internal class RepositorioComprobanteFalso : IComprobanteRepositorio
                 EstadoAutorizacionComprobante.Autorizado or
                 EstadoAutorizacionComprobante.AutorizadoConObservaciones)
             .MaxBy(c => c.Numero);
+    }
+
+    public IReadOnlyList<Comprobante> ObtenerPorEmisores(IReadOnlyCollection<string> cuitsEmisores)
+    {
+        return Comprobantes
+            .Where(c => cuitsEmisores.Contains(c.CUITEmisor))
+            .OrderByDescending(c => c.Fecha)
+            .ThenBy(c => c.PuntoVentaNumero)
+            .ThenBy(c => c.Tipo)
+            .ThenByDescending(c => c.Numero)
+            .ToList();
     }
 
     public void Agregar(Comprobante comprobante)

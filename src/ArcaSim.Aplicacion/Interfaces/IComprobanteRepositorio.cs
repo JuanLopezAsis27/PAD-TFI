@@ -17,6 +17,12 @@ public interface IComprobanteRepositorio
     /// </summary>
     Comprobante? ObtenerUltimoAutorizado(string cuitEmisor, int puntoVentaNumero, TipoComprobante tipo);
 
+    /// <summary>
+    /// Comprobantes emitidos por cualquiera de esos CUIT, solo para leer: del más reciente al más viejo
+    /// y, en la misma fecha, por punto de venta, tipo y número descendente.
+    /// </summary>
+    IReadOnlyList<Comprobante> ObtenerPorEmisores(IReadOnlyCollection<string> cuitsEmisores);
+
     void Agregar(Comprobante comprobante);
     void Actualizar(Comprobante comprobante);
     void Eliminar(Comprobante comprobante);

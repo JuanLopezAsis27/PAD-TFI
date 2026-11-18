@@ -2,7 +2,6 @@ using ArcaSim.Contratos.Requests;
 using ArcaSim.Contratos.Responses;
 using ArcaSim.Dominio.Entidades;
 using ArcaSim.Dominio.Enums;
-using ArcaSim.Dominio.Reglas;
 
 namespace ArcaSim.Api.Controllers;
 
@@ -42,22 +41,9 @@ internal static class MapeadorRest
         Habilitado = pv.Habilitado
     };
 
-    public static ComprobanteResponse MapearComprobante(Comprobante c)
+    /// <param name="urlQr">URL del código QR (la arma <c>ComprobanteServicio.GenerarUrlQr</c>); null si no tiene.</param>
+    public static ComprobanteResponse MapearComprobante(Comprobante c, string? urlQr)
     {
-        string? urlQr = null;
-        if (c.EstadoAutorizacion is EstadoAutorizacionComprobante.Autorizado
-            or EstadoAutorizacionComprobante.AutorizadoConObservaciones)
-        {
-            try
-            {
-                urlQr = ServicioQrComprobante.GenerarUrl(c);
-            }
-            catch
-            {
-                urlQr = null;
-            }
-        }
-
         return new ComprobanteResponse
         {
             CuitEmisor = c.CUITEmisor,
